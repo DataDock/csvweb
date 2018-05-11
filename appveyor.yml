@@ -1,0 +1,41 @@
+image: Visual Studio 2017
+
+install:
+  - choco install gitversion.portable -pre -y
+
+before_build:
+  - dotnet restore src/DataDock.CsvWeb.sln
+  - ps: gitversion /l console /output buildserver /updateassemblyinfo
+
+configuration: Release
+
+build_script:
+  - dotnet build -c Release src/DataDock.CsvWeb.sln
+  - dotnet pack -c Release -o %APPVEYOR_BUILD_FOLDER%\nugets src/DataDock.CsvWeb /p:Version=%GitVersion_NuGetVersion%
+
+test_script:
+  - ps: |
+      cd src/DataDock.CsvWeb.Tests
+      dotnet xunit -configuration %CONFIGURATION% -notrait "Category=explicit" | Out-File test.log
+      Push-AppveyorArtifact test.log
+      if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode)  }
+
+deploy:
+  - provider: GitHub
+    description: 'DataDock.CsvWeb $(GitVersion_SemVer)'
+    auth_token:
+      secure: Xv/uAiV07/ijWTyUs0TcD168osIBmCK1zIG51lLxThOHwk6S3MrtAOfKMphZwyPW
+    on:
+      appveyor_repo_tag: true 
+    artifact: /.*\.nupkg/
+  - provider: NuGet
+    api_key:
+      secure: F0faLBExz+2Uhqhm4iQclZdtyzCpewNJYZ5K7+IVZjSK46IjRVDhde4B4hpWMEQ2
+    on:
+      appveyor_repo_tag: true 
+    artifact: /*.nupkg/
+
+artifacts:
+  - path: 'nugets\*.nupkg'
+  - path: 'src\DataDock.CsvWeb.Tests\*.log'
+
