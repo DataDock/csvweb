@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27703.2000
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataDock.CsvWeb", "DataDock.CsvWeb\DataDock.CsvWeb.csproj", "{9C17D269-2C64-499D-9B39-178B39B3E51A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataDock.CsvWeb.Tests", "DataDock.CsvWeb.Tests\DataDock.CsvWeb.Tests.csproj", "{B590F0ED-0374-455C-A32D-D240AFAFAEEB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9C17D269-2C64-499D-9B39-178B39B3E51A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9C17D269-2C64-499D-9B39-178B39B3E51A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9C17D269-2C64-499D-9B39-178B39B3E51A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9C17D269-2C64-499D-9B39-178B39B3E51A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B590F0ED-0374-455C-A32D-D240AFAFAEEB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B590F0ED-0374-455C-A32D-D240AFAFAEEB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B590F0ED-0374-455C-A32D-D240AFAFAEEB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B590F0ED-0374-455C-A32D-D240AFAFAEEB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D2B94812-C6AC-4382-957E-E9770F726C73}
+	EndGlobalSection
+EndGlobal

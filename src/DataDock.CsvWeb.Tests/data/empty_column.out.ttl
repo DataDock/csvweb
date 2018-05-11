@@ -1,0 +1,6 @@
+﻿@base <http://example.org/data/empty_column> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<http://example.org/data/row-1> 
+  <#name> "Fred"^^xsd:string ;
+  <#age> "23"^^xsd:string .

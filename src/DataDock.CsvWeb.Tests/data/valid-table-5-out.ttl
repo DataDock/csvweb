@@ -1,0 +1,23 @@
+﻿@base <http://example.org/countries.csv> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<http://example.org/countries/1>
+  <#countryCode> "AD"^^xsd:string .
+<http://example.org/countries/AD>
+  <#latitude> "42.5"^^xsd:decimal ;
+  <#longitude> "1.6"^^xsd:decimal ;
+  <#name> "Andorra"^^xsd:string .
+
+<http://example.org/countries/2>
+  <#countryCode> "AE"^^xsd:string .
+<http://example.org/countries/AE>
+  <#latitude> "23.4"^^xsd:decimal ;
+  <#longitude> "53.8"^^xsd:decimal ;
+  <#name> "United Arab Emirates"^^xsd:string .
+
+<http://example.org/countries/3>
+  <#countryCode> "AF"^^xsd:string .
+<http://example.org/countries/AF>
+  <#latitude> "33.9"^^xsd:decimal ;
+  <#longitude> "67.7"^^xsd:decimal ;
+  <#name> "Afghanistan"^^xsd:string .

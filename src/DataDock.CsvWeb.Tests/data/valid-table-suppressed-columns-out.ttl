@@ -1,0 +1,15 @@
+﻿@base <http://example.org/countries.csv> .
+@prefix def: <http://example.org/countries.csv/def/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<http://example.org/countries/AD>
+  def:countryCode "AD"^^xsd:string ;
+  <#name> "Andorra"^^xsd:string .
+
+<http://example.org/countries/AE>
+  def:countryCode "AE"^^xsd:string ;
+  <#name> "United Arab Emirates"^^xsd:string .
+
+<http://example.org/countries/AF>
+  def:countryCode "AF"^^xsd:string ;
+  <#name> "Afghanistan"^^xsd:string .

@@ -1,0 +1,4 @@
+{
+  "url": "http://example.org/data/escaping",
+  "aboutUrl": "http://example.org/data/{Subject}" 
+}

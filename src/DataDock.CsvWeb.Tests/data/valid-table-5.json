@@ -1,0 +1,23 @@
+﻿{
+  "url": "http://example.org/countries.csv",
+  "tableSchema": {
+    "columns": [
+      {
+        "name": "countryCode",
+        "aboutUrl": "http://example.org/countries/{_row}"
+      },
+      {
+        "name": "latitude",
+        "datatype": "decimal"
+      },
+      {
+        "name": "longitude",
+        "datatype": "decimal"
+      },
+      {
+        "name": "name"
+      }
+    ]
+  },
+  "aboutUrl": "http://example.org/countries/{countryCode}"
+}

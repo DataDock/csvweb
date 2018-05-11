@@ -1,0 +1,4 @@
+﻿{
+  "url": "http://example.org/data/empty_column",
+  "aboutUrl": "http://example.org/data/row-{_row}" 
+}

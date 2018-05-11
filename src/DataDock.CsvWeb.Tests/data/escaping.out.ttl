@@ -1,0 +1,4 @@
+@base <http://example.org/data/escaping> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+<http://example.org/data/foo\u0020bar> <#Subject> "foo bar"^^xsd:string .
+<http://example.org/data/foo\u0020bar> <#String\u0020Value> "foo bar"^^xsd:string .
