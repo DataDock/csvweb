@@ -33,7 +33,7 @@ deploy:
       secure: F0faLBExz+2Uhqhm4iQclZdtyzCpewNJYZ5K7+IVZjSK46IjRVDhde4B4hpWMEQ2
     on:
       appveyor_repo_tag: true 
-    artifact: /*.nupkg/
+    artifact: /.*\.nupkg/
 
 artifacts:
   - path: 'nugets\*.nupkg'
