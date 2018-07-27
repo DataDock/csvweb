@@ -43,18 +43,19 @@ namespace DataDock.CsvWeb.Tests
 
         private async Task RunToRdfTest(CsvwTestDescription test, bool expectWarnings)
         {
-            var client = new HttpClient();
-            var actionResponse = await client.GetAsync(test.Action);
             var expect = new Graph();
             expect.LoadFromUri(test.Result);
+
             var actual = new Graph();
             var insertHandler = new GraphHandler(actual);
             var errorMessages = new List<string>();
             
             // Set up converter
-            var converter = new Converter(new Table{Url = test.Action}, insertHandler, errorMessage => errorMessages.Add(errorMessage));
-            var inputStream = await actionResponse.Content.ReadAsStreamAsync();
-            converter.Convert(new StreamReader(inputStream));
+            var converter = new Converter(insertHandler, ConverterMode.Standard, errorMessage => errorMessages.Add(errorMessage), suppressStringDatatype:true);
+            var tableGroup = new TableGroup();
+            var table = new Table(tableGroup) {Url = test.Action};
+
+            await converter.ConvertAsync(tableGroup, new DefaultResolver());
 
             var differ = new GraphDiff();
             var graphDiff = differ.Difference(expect, actual);
@@ -88,6 +89,28 @@ namespace DataDock.CsvWeb.Tests
             {
                 sb.Append($"{unexpectedTriples.Count} triples found but not expected:\n");
                 foreach (var t in unexpectedTriples)
+                {
+                    sb.Append("\t");
+                    sb.AppendLine(t.ToString(formatter));
+                }
+            }
+
+            if (gd.RemovedMSGs.Any())
+            {
+                var unexpectedGraphs = gd.RemovedMSGs.ToList();
+                sb.Append($"{unexpectedGraphs.Count} subgraphs expected and not found:\n");
+                foreach (var t in unexpectedGraphs.SelectMany(g => g.Triples))
+                {
+                    sb.Append("\t");
+                    sb.AppendLine(t.ToString(formatter));
+                }
+            }
+
+            if (gd.AddedMSGs.Any())
+            {
+                var missingGraphs = gd.AddedMSGs.ToList();
+                sb.Append($"{missingGraphs.Count} subgraphs unexpected:\n");
+                foreach (var t in missingGraphs.SelectMany(g=>g.Triples))
                 {
                     sb.Append("\t");
                     sb.AppendLine(t.ToString(formatter));

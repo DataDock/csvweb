@@ -72,7 +72,7 @@ namespace DataDock.CsvWeb.Parsing
 
             var tablesArray = t as JArray;
             if (tablesArray == null) throw new MetadataParseException("The value of the 'tables' property must be an array");
-            var tableGroup = new TableGroup {Tables = new List<Table>()};
+            var tableGroup = new TableGroup();
             foreach (var item in tablesArray)
             {
                 var tableDescriptionObject = item as JObject;

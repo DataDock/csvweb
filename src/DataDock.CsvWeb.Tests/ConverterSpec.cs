@@ -21,12 +21,16 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endregion
+
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using DataDock.CsvWeb.Metadata;
 using DataDock.CsvWeb.Parsing;
 using DataDock.CsvWeb.Rdf;
 using FluentAssertions;
+using Moq;
 using VDS.RDF;
 using VDS.RDF.Parsing;
 using VDS.RDF.Parsing.Handlers;
@@ -52,7 +56,7 @@ namespace DataDock.CsvWeb.Tests
 
         [Theory]
         [MemberData(nameof(ValidConversionData))]
-        public void TestValidConversions(string tableMetadataPath, string csvFilePath, string expectedOutputGraphPath)
+        public async void TestValidConversions(string tableMetadataPath, string csvFilePath, string expectedOutputGraphPath)
         {
             var metadataParser = new JsonMetadataParser(null);
             object metadataObject;
@@ -64,11 +68,10 @@ namespace DataDock.CsvWeb.Tests
             tableMeta.Should().NotBeNull(because:"The metadata file should parse as table metadata");
             var outputGraph = new Graph();
             var graphHandler = new GraphHandler(outputGraph);
-            var converter = new Converter(tableMeta, graphHandler);
-            using (var csvReader = File.OpenText(csvFilePath))
-            {
-                converter.Convert(csvReader);
-            }
+            var converter = new Converter(graphHandler, ConverterMode.Minimal);
+            var resolverMock = new Mock<ITableResolver>();
+            resolverMock.Setup(x => x.ResolveAsync(It.IsAny<Uri>())).Returns(Task.FromResult(File.OpenRead(csvFilePath) as Stream));
+            await converter.ConvertAsync(tableMeta.Parent as TableGroup, resolverMock.Object);
             converter.Errors.Count.Should().Be(0, "Expected 0 errors. Got {0}. Error listing is:\n{1}", converter.Errors.Count, string.Join("\n", converter.Errors));
             var turtleParser = new TurtleParser(TurtleSyntax.W3C);
             var expectGraph = new Graph();
