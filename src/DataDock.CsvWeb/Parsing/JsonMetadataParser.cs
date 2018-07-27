@@ -58,8 +58,37 @@ namespace DataDock.CsvWeb.Parsing
         public object Parse(JObject metadataObject)
         {
             JToken t;
+            if (metadataObject.TryGetValue("tables", out t)) return ParseTableGroup(metadataObject);
             if (metadataObject.TryGetValue("url", out t)) return ParseTable(metadataObject);
             throw new MetadataParseException("Unrecognized root object type");
+        }
+
+        public TableGroup ParseTableGroup(JObject root)
+        {
+            if (!root.TryGetValue("tables", out JToken t))
+            {
+                throw new MetadataParseException("Did not find required 'tables' property on table group object");
+            }
+
+            var tablesArray = t as JArray;
+            if (tablesArray == null) throw new MetadataParseException("The value of the 'tables' property must be an array");
+            var tableGroup = new TableGroup {Tables = new List<Table>()};
+            foreach (var item in tablesArray)
+            {
+                var tableDescriptionObject = item as JObject;
+                if (tableDescriptionObject == null)
+                    throw new MetadataParseException("Items in the 'tables' array must be objects");
+                tableGroup.Tables.Add(ParseTable(tableDescriptionObject));
+            }
+
+            if (root.TryGetValue("@id", out t))
+            {
+                var id = (t as JValue)?.Value<string>();
+                if (id == null) throw new MetadataParseException("The value of the @id property must be a string");
+                tableGroup.Id = ResolveUri(id);
+            }
+            ParseInheritedProperties(root, tableGroup);
+            return tableGroup;
         }
 
         public Table ParseTable(JObject root)
