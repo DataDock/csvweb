@@ -26,11 +26,13 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using AngleSharp.Network;
 using CsvHelper;
 using CsvHelper.Configuration;
 using DataDock.CsvWeb.Metadata;
+using DataDock.CsvWeb.Parsing;
 using VDS.RDF;
 using VDS.RDF.Parsing;
 
@@ -68,6 +70,44 @@ namespace DataDock.CsvWeb.Rdf
             _errorMessageSink = errorMessageSink;
             _reportInterval = reportInterval;
             _suppressStringDatatype = suppressStringDatatype;
+        }
+
+        public async Task ConvertAsync(Uri sourceUri, HttpClient httpClient)
+        {
+            var response = await httpClient.GetAsync(sourceUri);
+            response.EnsureSuccessStatusCode();
+            TableGroup tableGroup = null;
+            if (IsCsvMimeType(response.Content.Headers.ContentType.MediaType))
+            {
+                var metadataLocation = new Uri(sourceUri + "-metadata.json");
+                var metadataResponse = await httpClient.GetAsync(metadataLocation);
+                if (metadataResponse.IsSuccessStatusCode)
+                {
+                    tableGroup = await ParseCsvMetadata(metadataLocation, metadataResponse.Content);
+                }
+                else
+                {
+                    tableGroup = new TableGroup();
+                    var table = new Table(tableGroup) {Url = sourceUri};
+                }
+            }
+
+            if (tableGroup != null)
+            {
+                await ConvertAsync(tableGroup, new DefaultResolver(httpClient));
+            }
+        }
+
+        private static bool IsCsvMimeType(string mimeType)
+        {
+            return mimeType.Contains("text/csv");
+        }
+
+        private async Task<TableGroup> ParseCsvMetadata(Uri baseUri, HttpContent metadataContent)
+        {
+            var parser = new JsonMetadataParser(baseUri);
+            var metadata = await metadataContent.ReadAsStringAsync();
+            return parser.Parse(new StringReader(metadata));
         }
 
         public async Task ConvertAsync(TableGroup tableGroup, ITableResolver tableResolver) 
@@ -250,7 +290,9 @@ namespace DataDock.CsvWeb.Rdf
         {
             var datatypeIri = GetAnnotatedDatatypeIri(datatypeDescription);
 
-            if (datatypeIri.Equals(DatatypeAnnotation.String.Iri)) 
+            // C# library ignores the fragment part of the Iri so we need to also explicitly compare that.
+            if (datatypeIri.Equals(DatatypeAnnotation.String.Iri) && 
+                datatypeIri.Fragment.Equals(DatatypeAnnotation.String.Iri.Fragment)) 
             {
                 if (!string.IsNullOrEmpty(language))
                 {
@@ -289,6 +331,7 @@ namespace DataDock.CsvWeb.Rdf
         private IUriNode ResolveTemplate(Table tableMetadata, UriTemplate template, CsvReader csv)
         {
             var uri = template.Resolve((p) => ResolveProperty(tableMetadata, p, csv));
+            if (!uri.IsAbsoluteUri) uri = new Uri(tableMetadata.Url, uri);
             return _rdfHandler.CreateUriNode(uri);
         }
 

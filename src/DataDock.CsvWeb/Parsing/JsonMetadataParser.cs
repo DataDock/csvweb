@@ -44,7 +44,7 @@ namespace DataDock.CsvWeb.Parsing
             _defaultLanguage = defaultLanguage;
         }
 
-        public object Parse(TextReader textReader)
+        public TableGroup Parse(TextReader textReader)
         {
             var jsonParser = new Newtonsoft.Json.JsonSerializer();
             var rootObject = jsonParser.Deserialize(new JsonTextReader(textReader)) as JObject;
@@ -55,11 +55,16 @@ namespace DataDock.CsvWeb.Parsing
             return Parse(rootObject);
         }
 
-        public object Parse(JObject metadataObject)
+        public TableGroup Parse(JObject metadataObject)
         {
             JToken t;
             if (metadataObject.TryGetValue("tables", out t)) return ParseTableGroup(metadataObject);
-            if (metadataObject.TryGetValue("url", out t)) return ParseTable(metadataObject);
+            if (metadataObject.TryGetValue("url", out t))
+            {
+                var tableGroup = new TableGroup();
+                ParseTable(tableGroup, metadataObject);
+                return tableGroup;
+            }
             throw new MetadataParseException("Unrecognized root object type");
         }
 
@@ -78,7 +83,7 @@ namespace DataDock.CsvWeb.Parsing
                 var tableDescriptionObject = item as JObject;
                 if (tableDescriptionObject == null)
                     throw new MetadataParseException("Items in the 'tables' array must be objects");
-                tableGroup.Tables.Add(ParseTable(tableDescriptionObject));
+                tableGroup.Tables.Add(ParseTable(tableGroup, tableDescriptionObject));
             }
 
             if (root.TryGetValue("@id", out t))
@@ -91,7 +96,7 @@ namespace DataDock.CsvWeb.Parsing
             return tableGroup;
         }
 
-        public Table ParseTable(JObject root)
+        public Table ParseTable(TableGroup tableGroup, JObject root)
         {
             JToken t;
             if (!root.TryGetValue("url", out t))
@@ -101,7 +106,7 @@ namespace DataDock.CsvWeb.Parsing
             var url = (t as JValue)?.Value<string>();
             if (url == null) throw new MetadataParseException("The value of the 'url' property must be a string");
             var tableUri = ResolveUri(url);
-            var table = new Table {Url = tableUri};
+            var table = new Table(tableGroup) {Url = tableUri};
             if (root.TryGetValue("tableSchema", out t))
             {
                 var schemaObject = t as JObject;
