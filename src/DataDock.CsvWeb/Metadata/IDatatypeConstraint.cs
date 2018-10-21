@@ -21,31 +21,11 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endregion
-using System;
-using System.Collections.Generic;
 
 namespace DataDock.CsvWeb.Metadata
 {
-    public class DatatypeDescription
+    public interface IDatatypeConstraint
     {
-        /// <summary>
-        /// The absolute URL that identifies the datatype, or null if undefined
-        /// </summary>
-        public Uri Id { get; set; }
-
-        /// <summary>
-        ///  The annotation that determines the base datatype from which this datatype is derived
-        /// </summary>
-        public string Base { get; set; }
-
-        /// <summary>
-        /// The annotation that defines the format of a value of this type, used when parsing a string value
-        /// </summary>
-        public string Format { get; set; }
-
-        /// <summary>
-        /// Constraints derived from the constraint annotations
-        /// </summary>
-        public readonly IList<IDatatypeConstraint> Constraints = new List<IDatatypeConstraint>();
+        bool Validate(object value);
     }
 }

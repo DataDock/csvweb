@@ -1,0 +1,33 @@
+﻿{
+  "url": "http://example.org/countries.csv",
+  "tableSchema": {
+    "columns": [
+      {
+        "name": "cc",
+        "propertyUrl": "http://example.org/countries.csv/def/countryCode"
+      },
+      {
+        "name": "latitude",
+        "datatype": {
+          "base": "decimal", 
+          "format": "d.ddd",
+          "minInclusive": -90.0,
+          "maxInclusive":  90.0 
+        }
+      },
+      {
+        "name": "longitude",
+        "datatype": {
+          "base": "decimal",
+          "format": "d.ddd",
+          "minExclusive": -180.0,
+          "maxExclusive":  180.0 
+        }
+      },
+      {
+        "name": "name"
+      }
+    ],
+    "aboutUrl": "http://example.org/countries/{cc}"
+  }
+}
