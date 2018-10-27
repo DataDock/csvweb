@@ -289,6 +289,7 @@ namespace DataDock.CsvWeb.Rdf
         private ILiteralNode CreateLiteralNode(string cellValue, DatatypeDescription datatypeDescription, string language)
         {
             var datatypeIri = GetAnnotatedDatatypeIri(datatypeDescription);
+            
 
             // C# library ignores the fragment part of the Iri so we need to also explicitly compare that.
             if (datatypeIri.Equals(DatatypeAnnotation.String.Iri) && 
@@ -309,6 +310,7 @@ namespace DataDock.CsvWeb.Rdf
             }
 
             // Generate a datatyped literal
+            cellValue = NormalizeLiteral(cellValue, datatypeDescription, datatypeIri.ToString());
             return _rdfHandler.CreateLiteralNode(cellValue, datatypeIri);
         }
 
@@ -326,6 +328,29 @@ namespace DataDock.CsvWeb.Rdf
                     $"Could not determine the correct IRI for the datatype annotation {datatypeDescription.Base}");
             }
             return annotation.Iri;
+        }
+
+        private static string NormalizeLiteral(string lit, DatatypeDescription datatype, string datatypeIri)
+        {
+            switch (datatypeIri)
+            {
+                case XmlSpecsHelper.XmlSchemaDataTypeDate:
+                    if (!string.IsNullOrEmpty(datatype.Format))
+                    {
+                        return DateTime.ParseExact(lit, datatype.Format, CultureInfo.InvariantCulture).ToString(XmlSpecsHelper.XmlSchemaDateFormat);
+                    }
+                    return DateTime.Parse(lit).ToString(XmlSpecsHelper.XmlSchemaDateFormat);
+                case XmlSpecsHelper.XmlSchemaDataTypeDateTime:
+                    if (!string.IsNullOrEmpty(datatype.Format))
+                    {
+                        return DateTime.ParseExact(lit, datatype.Format, CultureInfo.InvariantCulture)
+                            .ToString(XmlSpecsHelper.XmlSchemaDateTimeFormat);
+                    }
+                    return DateTime.Parse(lit).ToString(XmlSpecsHelper.XmlSchemaDateTimeFormat);
+                // TODO: Implement numeric type normalization
+            }
+
+            return lit;
         }
 
         private IUriNode ResolveTemplate(Table tableMetadata, UriTemplate template, CsvReader csv)
