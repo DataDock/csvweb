@@ -25,29 +25,26 @@ using Xunit.Sdk;
 
 namespace DataDock.CsvWeb.Tests
 {
-    public class CsvwTestCasesSpec
+    public class CsvwTestCasesSpec : IClassFixture<CsvwTestServerFixture>
     {
-        private FluentMockServer _server;
+        private readonly FluentMockServer _server;
         private readonly Uri _baseUri;
 
-        public CsvwTestCasesSpec()
+        public CsvwTestCasesSpec(CsvwTestServerFixture fixture)
         {
-            _server = FluentMockServer.Start();
-            _baseUri = new Uri("http://localhost:" + _server.Ports[0]);
-            _server.Given(Request.Create().WithPath("/manifest-rdf.ttl"))
-                .RespondWith(Response.Create().WithBodyFromFile("data\\test-suite\\manifest-rdf.ttl")
-                    .WithHeader("Content-Type", "application/turtle")
-                    .WithStatusCode(200));
+            _server = fixture.Server;
+            _baseUri = fixture.BaseUri;
         }
 
         [Theory]
         [CsvwtManifest("data\\test-suite\\manifest-rdf.ttl")]
-        public async void RdfTests(string testId, CsvwTestDescription test)
+        public async void CsvwRdfTests(string testId, CsvwTestDescription test)
         {
             SetupTest(test);
             await RunTestAsync(test);
         }
 
+        /* KA: An example of how to setup and run a single test for debugging purposes
         [Fact]
         public async void RunTest011()
         {
@@ -58,6 +55,7 @@ namespace DataDock.CsvWeb.Tests
             SetupTest(test);
             await RunTestAsync(test);
         }
+        */
 
         private async Task RunTestAsync(CsvwTestDescription test)
         {
@@ -182,6 +180,27 @@ namespace DataDock.CsvWeb.Tests
             }
 
             return sb.ToString();
+        }
+    }
+
+    public class CsvwTestServerFixture : IDisposable
+    {
+        internal FluentMockServer Server { get; private set; }
+        internal Uri BaseUri { get; private set; }
+
+        public CsvwTestServerFixture()
+        {
+            Server = FluentMockServer.Start();
+            BaseUri = new Uri("http://localhost:" + Server.Ports[0]);
+            Server.Given(Request.Create().WithPath("/manifest-rdf.ttl"))
+                .RespondWith(Response.Create().WithBodyFromFile("data\\test-suite\\manifest-rdf.ttl")
+                    .WithHeader("Content-Type", "application/turtle")
+                    .WithStatusCode(200));
+        }
+
+        public void Dispose()
+        {
+            Server.Stop();
         }
     }
 
@@ -327,7 +346,7 @@ namespace DataDock.CsvWeb.Tests
         private readonly IGraph _manifestGraph;
         private readonly List<INode> _testNodes;
 
-        public CsvwtManifestAttribute(string manifestFilePath)
+        public CsvwtManifestAttribute(string manifestFilePath, params string[] skipTests)
         {
             _manifestGraph = new Graph();
             _manifestGraph.LoadFromFile(manifestFilePath);
@@ -337,11 +356,6 @@ namespace DataDock.CsvWeb.Tests
             _manifestGraph.NamespaceMap.AddNamespace("rdfs", new Uri("http://www.w3.org/2000/01/rdf-schema#"));
             var rdfType = _manifestGraph.CreateUriNode(new Uri(RdfSpecsHelper.RdfType));
             var mfManifest = _manifestGraph.CreateUriNode("mf:Manifest");
-
-            //var reasoner = new StaticRdfsReasoner();
-            //reasoner.Initialise(_manifestGraph);
-            //reasoner.Apply(_manifestGraph);
-
 
             foreach (var manifestNode in _manifestGraph.GetTriplesWithPredicateObject(rdfType, mfManifest).Select(t=>t.Subject))
             {
