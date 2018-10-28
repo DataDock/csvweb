@@ -96,14 +96,30 @@ namespace DataDock.CsvWeb.Rdf
                 var metadataResponse = await LocateMetadata(sourceUri, httpClient);
                 if (metadataResponse != null && metadataResponse.IsSuccessStatusCode)
                 {
-                    tableGroup = await ParseCsvMetadata(metadataResponse.RequestMessage.RequestUri,
-                        metadataResponse.Content);
+                    tableGroup = ParseCsvMetadata(metadataResponse.RequestMessage.RequestUri,
+                        await metadataResponse.Content.ReadAsStringAsync());
                 }
                 else
                 {
                     tableGroup = new TableGroup();
                     var table = new Table(tableGroup) {Url = sourceUri};
                 }
+            }
+
+            if (tableGroup != null)
+            {
+                await ConvertAsync(tableGroup);
+            }
+        }
+
+        public async Task ConvertWithLocalMetadata(Uri sourceUri, HttpClient httpClient, string localMetadata)
+        {
+            var response = await httpClient.GetAsync(sourceUri);
+            response.EnsureSuccessStatusCode();
+            TableGroup tableGroup = null;
+            if (IsCsvMimeType(response.Content.Headers.ContentType.MediaType))
+            {
+                tableGroup = ParseCsvMetadata(sourceUri, localMetadata);
             }
 
             if (tableGroup != null)
@@ -156,10 +172,9 @@ namespace DataDock.CsvWeb.Rdf
             return mimeType.Contains("text/csv");
         }
 
-        private async Task<TableGroup> ParseCsvMetadata(Uri baseUri, HttpContent metadataContent)
+        private TableGroup ParseCsvMetadata(Uri baseUri, string metadata)
         {
             var parser = new JsonMetadataParser(_resolver, baseUri);
-            var metadata = await metadataContent.ReadAsStringAsync();
             return parser.Parse(new StringReader(metadata));
         }
 

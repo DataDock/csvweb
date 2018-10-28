@@ -46,12 +46,12 @@ namespace DataDock.CsvWeb.Tests
 
         /* KA: An example of how to setup and run a single test for debugging purposes */
         [Fact]
-        public async void RunTest012()
+        public async void RunTest013()
         {
             var manifestGraph = new Graph();
             manifestGraph.LoadFromFile("data\\test-suite\\manifest-rdf.ttl");
             var testReader = new CsvwtManifestReader(manifestGraph);
-            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test012"));
+            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test013"));
             SetupTest(test);
             await RunTestAsync(test);
         }
@@ -113,7 +113,15 @@ namespace DataDock.CsvWeb.Tests
             
             // Set up converter
             var converter = new Converter(insertHandler, new DefaultResolver(), ConverterMode.Standard, errorMessage => errorMessages.Add(errorMessage), suppressStringDatatype:true);
-            await converter.ConvertAsync(new Uri(_baseUri, test.Action.Uri), new HttpClient());
+            if (test.Options.Metadata != null)
+            {
+                var localMetadata = File.ReadAllText(test.Options.Metadata.LocalPath);
+                await converter.ConvertWithLocalMetadata(new Uri(_baseUri, test.Action.Uri), new HttpClient(), localMetadata);
+            }
+            else
+            {
+                await converter.ConvertAsync(new Uri(_baseUri, test.Action.Uri), new HttpClient());
+            }
 
             //var tableGroup = new TableGroup();
             //var table = new Table(tableGroup) {Url = new Uri(_baseUri, test.Action.Uri)};
@@ -330,9 +338,13 @@ namespace DataDock.CsvWeb.Tests
                 var noProv = _manifestGraph
                     .GetTriplesWithSubjectPredicate(optionsNode, _manifestGraph.CreateUriNode("csvt:noProv"))
                     .Select(t => t.Object.AsValuedNode().AsBoolean()).FirstOrDefault();
+                var metadata = _manifestGraph
+                    .GetTriplesWithSubjectPredicate(optionsNode, _manifestGraph.CreateUriNode("csvt:metadata"))
+                    .Select(t => t.Object).OfType<IUriNode>().FirstOrDefault();
                 return new CsvwOptions
                 {
-                    NoProv = noProv
+                    NoProv = noProv,
+                    Metadata = metadata?.Uri
                 };
             }
 
@@ -366,107 +378,14 @@ namespace DataDock.CsvWeb.Tests
             }
         }
 
+        
         public override IEnumerable<object[]> GetData(MethodInfo testMethod)
         {
-            var mfName = _manifestGraph.CreateUriNode("mf:name");
-            var mfAction = _manifestGraph.CreateUriNode("mf:action");
-            var mfResult = _manifestGraph.CreateUriNode("mf:result");
-            var rdfType = _manifestGraph.CreateUriNode(new Uri(RdfSpecsHelper.RdfType));
-            var rdfsComment = _manifestGraph.CreateUriNode("rdfs:comment");
-            var rdftApproval = _manifestGraph.CreateUriNode("rdft:approval");
-            var rdftApproved = _manifestGraph.CreateUriNode("rdft:Approved");
-            var csvtOption = _manifestGraph.CreateUriNode("csvt:option");
-            var csvtImplicit = _manifestGraph.CreateUriNode("csvt:implicit");
-
-            foreach (var testNode in _testNodes.OfType<IUriNode>().OrderBy(n=>n.Uri.ToString()))
+            var manifestReader = new CsvwtManifestReader(_manifestGraph);
+            foreach (var test in manifestReader.ReadAllTests())
             {
-                // Don't pass tests that are not approved to the test runner
-                var approved = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, rdftApproval)
-                    .WithObject(rdftApproved).Any();
-                if (!approved) continue;
-
-                var type = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, rdfType)
-                    .Select(t => (t.Object as IUriNode)).FirstOrDefault()?.ToString();
-                if (type == null) continue;
-                CsvwTestType testType;
-                switch (type)
-                {
-                    case "http://www.w3.org/2013/csvw/tests/vocab#ToRdfTest":
-                        testType = CsvwTestType.ToRdfTest;
-                        break;
-                    case "http://www.w3.org/2013/csvw/tests/vocab#ToRdfTestWithWarnings":
-                        testType = CsvwTestType.ToRdfTestWithWarnings;
-                        break;
-                    case "http://www.w3.org/2013/csvw/tests/vocab#NegativeRdfTest":
-                        testType = CsvwTestType.NegativeRdfTest;
-                        break;
-                    default:
-                        throw new Exception("Unrecognized test type: " + type);
-                }
-
-                var testId = testNode.Uri.Fragment;
-                var name = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, mfName)
-                    .Select(t => t.Object.AsValuedNode().AsString()).FirstOrDefault();
-                var comment = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, rdfsComment)
-                    .Select(t => t.Object.AsValuedNode().AsString()).FirstOrDefault();
-                var optionsNode = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, csvtOption)
-                    .Select(t => t.Object).FirstOrDefault();
-                var options = GetOptions(optionsNode);
-                var action = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, mfAction)
-                    .Select(t => (t.Object as IUriNode)?.Uri).FirstOrDefault();
-                var result = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, mfResult)
-                    .Select(t => (t.Object as IUriNode)?.Uri).FirstOrDefault();
-                var implicitResource = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, csvtImplicit)
-                    .Select(t => (t.Object as IUriNode)?.Uri).FirstOrDefault();
-
-                var relAction = action == null ? null : _manifestGraph.BaseUri.MakeRelativeUri(action);
-                var relResult = result == null ? null : _manifestGraph.BaseUri.MakeRelativeUri(result);
-                var relImplicit = implicitResource == null
-                    ? null
-                    : _manifestGraph.BaseUri.MakeRelativeUri(implicitResource);
-                var testDescription = new CsvwTestDescription
-                {
-                    Id = testId,
-                    Name = name,
-                    Comment = comment,
-                    TestType = testType,
-                    Approved = true,
-                    Options = options,
-                    Action = new CsvwTestFileDescription
-                    {
-                        Uri = relAction,
-                        LocalFilePath = action?.LocalPath
-                    },
-                    Result = new CsvwTestFileDescription
-                    {
-                        Uri = relResult,
-                        LocalFilePath = result?.LocalPath
-                    },
-                    Implicit = new CsvwTestFileDescription
-                    {
-                        Uri = relImplicit,
-                        LocalFilePath =  implicitResource?.LocalPath
-                    }
-                };
-                yield return new object[]{testId, testDescription};
+                yield return new object[] {test.Id, test};
             }
-        }
-
-        private CsvwOptions GetOptions(INode optionsNode)
-        {
-            var ret = new CsvwOptions();
-            if (optionsNode != null)
-            {
-                var noProv = _manifestGraph
-                    .GetTriplesWithSubjectPredicate(optionsNode, _manifestGraph.CreateUriNode("csvt:noProv"))
-                    .Select(t => t.Object.AsValuedNode().AsBoolean()).FirstOrDefault();
-                return new CsvwOptions
-                {
-                    NoProv = noProv
-                };
-            }
-
-            return ret;
         }
     }
 
@@ -492,6 +411,7 @@ namespace DataDock.CsvWeb.Tests
     public class CsvwOptions
     {
         public bool NoProv;
+        public Uri Metadata;
     }
 
     public enum CsvwTestType
