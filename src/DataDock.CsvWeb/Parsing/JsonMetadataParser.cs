@@ -25,6 +25,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Xml;
 using DataDock.CsvWeb.Metadata;
 using Newtonsoft.Json;
@@ -35,11 +36,15 @@ namespace DataDock.CsvWeb.Parsing
 {
     public class JsonMetadataParser
     {
+        private readonly ITableResolver _resolver;
         private readonly Uri _baseUri;
         private string _defaultLanguage;
 
-        public JsonMetadataParser(Uri baseUri, string defaultLanguage = null)
+        
+
+        public JsonMetadataParser(ITableResolver resolver, Uri baseUri, string defaultLanguage = null)
         {
+            _resolver = resolver;
             _baseUri = baseUri;
             _defaultLanguage = defaultLanguage;
         }
@@ -52,10 +57,13 @@ namespace DataDock.CsvWeb.Parsing
             {
                 throw new MetadataParseException("Expected root of JSON document to be an object.");
             }
+            var normalizer = new MetadataNormalizer(_resolver, _baseUri, _defaultLanguage);
+            rootObject = normalizer.NormalizeMetadata(rootObject);
             return Parse(rootObject);
         }
 
-        public TableGroup Parse(JObject metadataObject)
+        
+        private TableGroup Parse(JObject metadataObject)
         {
             JToken t;
             if (metadataObject.TryGetValue("tables", out t)) return ParseTableGroup(metadataObject);
@@ -93,6 +101,7 @@ namespace DataDock.CsvWeb.Parsing
                 tableGroup.Id = ResolveUri(id);
             }
             ParseInheritedProperties(root, tableGroup);
+            ParseCommonProperties(root, tableGroup);
             return tableGroup;
         }
 
@@ -117,6 +126,7 @@ namespace DataDock.CsvWeb.Parsing
                 table.TableSchema = ParseTableSchema(table, schemaObject);
             }
             ParseInheritedProperties(root, table);
+            ParseCommonProperties(root, table);
             return table;
         }
 
@@ -249,6 +259,46 @@ namespace DataDock.CsvWeb.Parsing
                 ValidateBaseDatatype(datatypeId);
                 datatype.Base = datatypeId;
             }
+            else
+            {
+                datatype.Base = "string";
+            }
+
+            if (root.TryGetValue("format", out t))
+            {
+                datatype.Format = t.Value<string>();
+            }
+
+            if (root.TryGetValue("minimum", out t))
+            {
+                datatype.Constraints.Add(ParseConstraint(datatype, ValueConstraintType.Min, t));
+            }
+
+            if (root.TryGetValue("minInclusive", out t))
+            {
+                datatype.Constraints.Add(ParseConstraint(datatype, ValueConstraintType.Min, t));
+            }
+
+            if (root.TryGetValue("minExclusive", out t))
+            {
+                datatype.Constraints.Add(ParseConstraint(datatype, ValueConstraintType.MinExclusive, t));
+            }
+
+            if (root.TryGetValue("maximum", out t))
+            {
+                datatype.Constraints.Add(ParseConstraint(datatype, ValueConstraintType.Max, t));
+            }
+
+            if (root.TryGetValue("maxInclusive", out t))
+            {
+                datatype.Constraints.Add(ParseConstraint(datatype, ValueConstraintType.Max, t));
+            }
+
+            if (root.TryGetValue("maxExclusive", out t))
+            {
+                datatype.Constraints.Add(ParseConstraint(datatype, ValueConstraintType.MaxExclusive, t));
+            }
+
             return datatype;
         }
 
@@ -258,6 +308,18 @@ namespace DataDock.CsvWeb.Parsing
             if (datatypeAnnotation == null)
                 throw new MetadataParseException(
                     $"Unable to match the datatype '{baseTypeId}' to a known datatype");
+        }
+
+        private static ValueConstraint ParseConstraint(DatatypeDescription datatype, ValueConstraintType constraintType, JToken t)
+        {
+            if (t.Type == JTokenType.Integer)
+                return new ValueConstraint
+                    {ConstraintType = constraintType, NumericThreshold = (double) t.Value<int>()};
+            if (t.Type == JTokenType.Float)
+                return new ValueConstraint
+                    { ConstraintType = constraintType, NumericThreshold = t.Value<double>() };
+            // TODO: Better parsing of min and max values using datatype and format
+            throw new NotImplementedException("Only numeric minimum and maximum constraints are currently supported");
         }
 
         private Uri ResolveUri(string link)
@@ -276,10 +338,20 @@ namespace DataDock.CsvWeb.Parsing
             if (!Uri.TryCreate(_baseUri, link, out ret))
             {
                 throw new MetadataParseException(
-                    $"The value '{link} could not be parsed as either an aboslute or relative IRI.");
+                    $"The value '{link} could not be parsed as either an absolute or relative IRI.");
             }
             return ret;
         }
 
+        private void ParseCommonProperties(JObject root, ICommonPropertyContainer container)
+        {
+            foreach (var p in root.Properties())
+            {
+                if (MetadataSpecHelper.IsCommonProperty(p.Name))
+                {
+                    container.CommonProperties.Add(p.DeepClone());
+                }
+            }
+        }
     }
 }

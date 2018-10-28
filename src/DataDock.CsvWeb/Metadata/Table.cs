@@ -22,10 +22,11 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 using System;
+using Newtonsoft.Json.Linq;
 
 namespace DataDock.CsvWeb.Metadata
 {
-    public class Table : InheritedPropertyContainer
+    public class Table : InheritedPropertyContainer, ICommonPropertyContainer
     {
         /// <summary>
         /// Creates a new table in its own anonymous table group
@@ -51,5 +52,6 @@ namespace DataDock.CsvWeb.Metadata
         public Uri Url { get; set; }
         public Schema TableSchema { get; set; }
         public bool SuppressOutput { get; set; }
+        public JObject CommonProperties { get; } = new JObject();
     }
 }

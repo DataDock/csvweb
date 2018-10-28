@@ -131,7 +131,7 @@ namespace DataDock.CsvWeb.Tests
                 };
                 t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
                 {
-                    Name = "countryCode",
+                    Name = "cc",
                     PropertyUrl = new UriTemplate("http://example.org/countries.csv/def/countryCode")
                 });
                 t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
@@ -171,7 +171,7 @@ namespace DataDock.CsvWeb.Tests
         [MemberData(nameof(ValidParserTests))]
         public void TestParseOfValidMetadataJson(string jsonPath, Uri baseUri, object expectedResult)
         {
-            var metadataParser = new JsonMetadataParser(baseUri);
+            var metadataParser = new JsonMetadataParser(new DefaultResolver(), baseUri ?? new Uri("http://localhost/example.json"));
             using (var fileStream = File.OpenText(jsonPath))
             {
                 var parsed = metadataParser.Parse(fileStream);

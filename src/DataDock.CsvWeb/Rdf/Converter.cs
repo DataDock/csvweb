@@ -27,12 +27,16 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using AngleSharp.Network;
 using CsvHelper;
 using CsvHelper.Configuration;
 using DataDock.CsvWeb.Metadata;
 using DataDock.CsvWeb.Parsing;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using VDS.RDF;
 using VDS.RDF.Parsing;
 
@@ -40,6 +44,7 @@ namespace DataDock.CsvWeb.Rdf
 {
     public class Converter
     {
+        private readonly ITableResolver _resolver;
         private readonly IRdfHandler _rdfHandler;
         private readonly List<string> _errors;
         private readonly IProgress<int> _progress;
@@ -54,15 +59,18 @@ namespace DataDock.CsvWeb.Rdf
         private INode _tableGroupNode, _tableNode, _rowNode;
 
         private const string CSVW_NS = "http://www.w3.org/ns/csvw#";
+        private readonly JObject _csvwContext;
 
         public Converter(
-            IRdfHandler rdfHandler, 
+            IRdfHandler rdfHandler,
+            ITableResolver resolver = null,
             ConverterMode mode = ConverterMode.Standard,
             Action<string> errorMessageSink=null, 
             IProgress<int> conversionProgress=null,  
             int reportInterval=50,
             bool suppressStringDatatype = false)
         {
+            _resolver = resolver ?? new DefaultResolver();
             _rdfHandler = rdfHandler;
             Mode = mode;
             _errors=  new List<string>();
@@ -70,6 +78,12 @@ namespace DataDock.CsvWeb.Rdf
             _errorMessageSink = errorMessageSink;
             _reportInterval = reportInterval;
             _suppressStringDatatype = suppressStringDatatype;
+            using (var reader =
+                new StreamReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("DataDock.CsvWeb.Resources.csvw.jsonld"),
+                    Encoding.UTF8))
+            {
+                _csvwContext = JsonConvert.DeserializeObject<JObject>(reader.ReadToEnd())["@context"] as JObject;
+            }
         }
 
         public async Task ConvertAsync(Uri sourceUri, HttpClient httpClient)
@@ -79,11 +93,11 @@ namespace DataDock.CsvWeb.Rdf
             TableGroup tableGroup = null;
             if (IsCsvMimeType(response.Content.Headers.ContentType.MediaType))
             {
-                var metadataLocation = new Uri(sourceUri + "-metadata.json");
-                var metadataResponse = await httpClient.GetAsync(metadataLocation);
-                if (metadataResponse.IsSuccessStatusCode)
+                var metadataResponse = await LocateMetadata(sourceUri, httpClient);
+                if (metadataResponse != null && metadataResponse.IsSuccessStatusCode)
                 {
-                    tableGroup = await ParseCsvMetadata(metadataLocation, metadataResponse.Content);
+                    tableGroup = await ParseCsvMetadata(metadataResponse.RequestMessage.RequestUri,
+                        metadataResponse.Content);
                 }
                 else
                 {
@@ -94,8 +108,47 @@ namespace DataDock.CsvWeb.Rdf
 
             if (tableGroup != null)
             {
-                await ConvertAsync(tableGroup, new DefaultResolver(httpClient));
+                await ConvertAsync(tableGroup);
             }
+        }
+
+        private async Task<HttpResponseMessage> LocateMetadata(Uri sourceUri, HttpClient httpClient)
+        {
+            var csvmLocation = new Uri(sourceUri, "/.well-known/csvm");
+            var csvmResponse = await httpClient.GetAsync(csvmLocation);
+            var metadataLocations = new List<Uri>();
+            if (csvmResponse.IsSuccessStatusCode)
+            {
+                var content = await csvmResponse.Content.ReadAsStringAsync();
+                var lines = content.Split('\n');
+                var templateParams = new Dictionary<string, string> {{"url", sourceUri.ToString()}};
+                foreach (var line in lines.Select(l => l.Trim()))
+                {
+                    if (!string.IsNullOrEmpty(line))
+                    {
+                        var template = new UriTemplate(line);
+                        var metadataLocation = template.Resolve(templateParams);
+                        if (!metadataLocation.IsAbsoluteUri) metadataLocation = new Uri(sourceUri, metadataLocation);
+                        metadataLocations.Add(metadataLocation);
+                    }
+                }
+            }
+            else
+            {
+                metadataLocations.Add(new Uri(sourceUri + "-metadata.json"));
+                metadataLocations.Add(new Uri(sourceUri, "csv-metadata.json"));
+            }
+
+            foreach (var loc in metadataLocations)
+            {
+                var metadataResponse = await httpClient.GetAsync(loc);
+                if (metadataResponse.IsSuccessStatusCode)
+                {
+                    return metadataResponse;
+                }
+            }
+
+            return null;
         }
 
         private static bool IsCsvMimeType(string mimeType)
@@ -105,12 +158,12 @@ namespace DataDock.CsvWeb.Rdf
 
         private async Task<TableGroup> ParseCsvMetadata(Uri baseUri, HttpContent metadataContent)
         {
-            var parser = new JsonMetadataParser(baseUri);
+            var parser = new JsonMetadataParser(_resolver, baseUri);
             var metadata = await metadataContent.ReadAsStringAsync();
             return parser.Parse(new StringReader(metadata));
         }
 
-        public async Task ConvertAsync(TableGroup tableGroup, ITableResolver tableResolver) 
+        public async Task ConvertAsync(TableGroup tableGroup) 
         {
             _rdfHandler.StartRdf();
             _rdfHandler.HandleNamespace("rdf", new Uri("http://www.w3.org/1999/02/22-rdf-syntax-ns#"));
@@ -129,11 +182,12 @@ namespace DataDock.CsvWeb.Rdf
             }
 
             // TODO: 3. In standard mode only, emit the triples generated by running the algorithm specified in section 6. JSON-LD to RDF over any notes and non-core annotations specified for the group of tables, with node G as an initial subject, the notes or non-core annotation as property, and the value of the notes or non-core annotation as value
+            EmitCommonProperties(_tableGroupNode, tableGroup);
 
             // 4. For each table where the suppress output annotation is false:
             foreach (var table in tableGroup.Tables.Where(t=>!t.SuppressOutput))
             {
-                using (var textReader = new StreamReader(await tableResolver.ResolveAsync(table.Url)))
+                using (var textReader = new StreamReader(await _resolver.ResolveAsync(table.Url)))
                 {
                     Convert(table, textReader);
                 }
@@ -164,6 +218,7 @@ namespace DataDock.CsvWeb.Rdf
                     _rdfHandler.CreateUriNode(UriFactory.Create(CSVW_NS + "url")),
                     _rdfHandler.CreateUriNode(tableMetadata.Url)));
                 // TODO: 4.5 In standard mode only, emit the triples generated by running the algorithm specified in section 6. JSON-LD to RDF over any notes and non-core annotations specified for the table, with node T as an initial subject, the notes or non-core annotation as property, and the value of the notes or non-core annotation as value.
+                EmitCommonProperties(_tableNode, tableMetadata);
             }
 
             using (var csv = new CsvReader(csvTextReader))
@@ -374,6 +429,161 @@ namespace DataDock.CsvWeb.Rdf
                 if (tableMetadata.TableSchema.Columns[i].Name != null && tableMetadata.TableSchema.Columns[i].Name.Equals(columnName)) return i;
             }
             throw new ConversionError($"Could not find a column named {columnName} in the CSV metadata.");
+        }
+
+        private void EmitCommonProperties(INode subject, ICommonPropertyContainer container)
+        {
+            foreach (var p in container.CommonProperties.Properties())
+            {
+                if (!Uri.IsWellFormedUriString(p.Name, UriKind.Absolute))
+                {
+                    throw new ConversionError(
+                        "Expected common property name to have been normalized to an absolute URI. Found: " + p.Name);
+                }
+                
+                EmitCommonProperty(subject, ExpandUrl(p.Name), p.Value);
+            }
+        }
+
+        private void EmitCommonProperty(INode subject, Uri predicate, JToken value)
+        {
+            if (value is JArray array)
+            {
+                foreach (var item in array)
+                {
+                    EmitCommonProperty(subject, predicate, item);
+                }
+            }
+            else if (value is JObject o)
+            {
+                if (o.ContainsKey("@value"))
+                {
+                    var litVal = o["@value"].Value<string>();
+                    if (o.ContainsKey("@type"))
+                    {
+                        _rdfHandler.HandleTriple(new Triple(
+                            subject,
+                            _rdfHandler.CreateUriNode(predicate),
+                            _rdfHandler.CreateLiteralNode(litVal, ExpandUrl(o["@type"].Value<string>()))));
+                    }
+                    else if (o.ContainsKey("@language"))
+                    {
+                        var lang = o["@language"].Value<string>();
+                        _rdfHandler.HandleTriple(new Triple(
+                            subject,
+                            _rdfHandler.CreateUriNode(predicate),
+                            _rdfHandler.CreateLiteralNode(litVal, lang)));
+                    }
+                    else
+                    {
+                        _rdfHandler.HandleTriple(new Triple(
+                            subject,
+                            _rdfHandler.CreateUriNode(predicate),
+                            _rdfHandler.CreateLiteralNode(litVal, new Uri(XmlSpecsHelper.XmlSchemaDataTypeString))));
+                    }
+                }
+                else
+                {
+                    var s = o.ContainsKey("@id")
+                        ? (INode) _rdfHandler.CreateUriNode(new Uri(o["@id"].Value<string>()))
+                        : _rdfHandler.CreateBlankNode();
+                    _rdfHandler.HandleTriple(new Triple(subject, _rdfHandler.CreateUriNode(predicate), s));
+                    if (o.ContainsKey("@type"))
+                    {
+                        if (o["@type"] is JArray typeArray)
+                        {
+                            foreach (var t in typeArray)
+                            {
+                                EmitTypeTriple(s, t);
+                            }
+                        }
+                        else
+                        {
+                            EmitTypeTriple(s, o["@type"]);
+                        }
+                    }
+
+                    foreach (var p in o.Properties())
+                    {
+                        if (!p.Name.StartsWith("@"))
+                        {
+                            EmitCommonProperty(s, ExpandUrl(p.Name), p.Value);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                switch (value.Type)
+                {
+                    case JTokenType.Boolean:
+                        _rdfHandler.HandleTriple(new Triple(subject,
+                            _rdfHandler.CreateUriNode(predicate),
+                            _rdfHandler.CreateLiteralNode(
+                                value.Value<bool>() ? "true" : "false",
+                                new Uri(XmlSpecsHelper.XmlSchemaDataTypeBoolean)
+                            )));
+                        break;
+                    case JTokenType.Integer:
+                        _rdfHandler.HandleTriple(new Triple(
+                            subject,
+                            _rdfHandler.CreateUriNode(predicate),
+                            _rdfHandler.CreateLiteralNode(
+                                value.Value<int>().ToString(CultureInfo.InvariantCulture),
+                                new Uri(XmlSpecsHelper.XmlSchemaDataTypeInteger))));
+                        break;
+                    case JTokenType.Float:
+                        _rdfHandler.HandleTriple(new Triple(
+                            subject,
+                            _rdfHandler.CreateUriNode(predicate),
+                            _rdfHandler.CreateLiteralNode(
+                                value.Value<double>().ToString("E"),
+                                new Uri(XmlSpecsHelper.XmlSchemaDataTypeDouble))));
+                        break;
+                    default:
+                        _rdfHandler.HandleTriple(new Triple(
+                            subject,
+                            _rdfHandler.CreateUriNode(predicate),
+                            _rdfHandler.CreateLiteralNode(
+                                value.Value<string>(),
+                                new Uri(XmlSpecsHelper.XmlSchemaDataTypeString))));
+                        break;
+                }
+            }
+        }
+
+        private void EmitTypeTriple(INode s, JToken t)
+        {
+            var typeUri = ExpandUrl(t.Value<string>());
+            _rdfHandler.HandleTriple(new Triple(s,
+                _rdfHandler.CreateUriNode(new Uri(RdfSpecsHelper.RdfType)),
+                _rdfHandler.CreateUriNode(typeUri)));
+        }
+
+        private Uri ExpandUrl(string v)
+        {
+            if (_csvwContext.ContainsKey(v) && _csvwContext[v].Type == JTokenType.String)
+            {
+                return new Uri(_csvwContext[v].Value<string>());
+            }
+
+            if (v.Contains(":"))
+            {
+                var parts = v.Split(new[] {':'}, 2);
+                var prefix = parts[0];
+                var suffix = parts[1];
+                if (suffix.StartsWith("//"))
+                {
+                    return new Uri(v);
+                }
+
+                if (_csvwContext.ContainsKey(prefix) && _csvwContext[prefix].Type == JTokenType.String)
+                {
+                    return new Uri(_csvwContext[prefix].Value<string>() + suffix);
+                }
+            }
+
+            throw new MetadataParseException("Unable to expand URL value:  " + v);
         }
 
         public class ConversionError : Exception

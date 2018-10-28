@@ -44,18 +44,18 @@ namespace DataDock.CsvWeb.Tests
             await RunTestAsync(test);
         }
 
-        /* KA: An example of how to setup and run a single test for debugging purposes
+        /* KA: An example of how to setup and run a single test for debugging purposes */
         [Fact]
-        public async void RunTest011()
+        public async void RunTest012()
         {
             var manifestGraph = new Graph();
             manifestGraph.LoadFromFile("data\\test-suite\\manifest-rdf.ttl");
             var testReader = new CsvwtManifestReader(manifestGraph);
-            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test011"));
+            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test012"));
             SetupTest(test);
             await RunTestAsync(test);
         }
-        */
+        /* */
 
         private async Task RunTestAsync(CsvwTestDescription test)
         {
@@ -112,7 +112,7 @@ namespace DataDock.CsvWeb.Tests
             var errorMessages = new List<string>();
             
             // Set up converter
-            var converter = new Converter(insertHandler, ConverterMode.Standard, errorMessage => errorMessages.Add(errorMessage), suppressStringDatatype:true);
+            var converter = new Converter(insertHandler, new DefaultResolver(), ConverterMode.Standard, errorMessage => errorMessages.Add(errorMessage), suppressStringDatatype:true);
             await converter.ConvertAsync(new Uri(_baseUri, test.Action.Uri), new HttpClient());
 
             //var tableGroup = new TableGroup();

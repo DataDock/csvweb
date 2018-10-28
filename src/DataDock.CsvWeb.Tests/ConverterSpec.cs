@@ -58,20 +58,23 @@ namespace DataDock.CsvWeb.Tests
         [MemberData(nameof(ValidConversionData))]
         public async void TestValidConversions(string tableMetadataPath, string csvFilePath, string expectedOutputGraphPath)
         {
-            var metadataParser = new JsonMetadataParser(null);
-            object metadataObject;
+            var metadataParser = new JsonMetadataParser(new DefaultResolver(), new Uri("http://example.org/metadata.json"));
+            TableGroup tableGroup;
             using (var metadataReader = File.OpenText(tableMetadataPath))
             {
-                metadataObject = metadataParser.Parse(metadataReader);
+                tableGroup = metadataParser.Parse(metadataReader);
             }
-            var tableMeta = metadataObject as Table;
+
+            tableGroup.Should().NotBeNull();
+            tableGroup.Tables.Should().HaveCount(1);
+            var tableMeta = tableGroup.Tables[0];
             tableMeta.Should().NotBeNull(because:"The metadata file should parse as table metadata");
             var outputGraph = new Graph();
             var graphHandler = new GraphHandler(outputGraph);
-            var converter = new Converter(graphHandler, ConverterMode.Minimal);
             var resolverMock = new Mock<ITableResolver>();
             resolverMock.Setup(x => x.ResolveAsync(It.IsAny<Uri>())).Returns(Task.FromResult(File.OpenRead(csvFilePath) as Stream));
-            await converter.ConvertAsync(tableMeta.Parent as TableGroup, resolverMock.Object);
+            var converter = new Converter(graphHandler, resolverMock.Object, ConverterMode.Minimal);
+            await converter.ConvertAsync(tableMeta.Parent as TableGroup);
             converter.Errors.Count.Should().Be(0, "Expected 0 errors. Got {0}. Error listing is:\n{1}", converter.Errors.Count, string.Join("\n", converter.Errors));
             var turtleParser = new TurtleParser(TurtleSyntax.W3C);
             var expectGraph = new Graph();
