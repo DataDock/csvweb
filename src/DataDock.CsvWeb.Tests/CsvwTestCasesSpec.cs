@@ -135,6 +135,8 @@ namespace DataDock.CsvWeb.Tests
             //await converter.ConvertAsync(tableGroup, new DefaultResolver());
 
             var differ = new GraphDiff();
+            NormalizeLiterals(expect);
+            NormalizeLiterals(actual);
             var graphDiff = differ.Difference(expect, actual);
            
             // Assert graphs are equal
@@ -142,6 +144,27 @@ namespace DataDock.CsvWeb.Tests
             //    "Count of triples in output graph should match the count of triples in the expected result graph");
             //Assert.Equal(expect.Triples.Count, actual.Triples.Count);
             Assert.True(graphDiff.AreEqual, "Expected graphs to be the same.\n" + ReportGraphDiff(graphDiff));
+        }
+
+        private static readonly Uri XsdString = new Uri(XmlSpecsHelper.XmlSchemaDataTypeString);
+
+        private void NormalizeLiterals(IGraph g)
+        {
+            List<Triple> toNormalize = new List<Triple>();
+            foreach (var t in g.Triples)
+            {
+                if (t.Object is ILiteralNode lit && string.IsNullOrEmpty(lit.Language) && lit.DataType == null)
+                {
+                    toNormalize.Add(t);
+                }
+            }
+
+            foreach (var t in toNormalize)
+            {
+                var lit = t.Object as ILiteralNode;
+                g.Retract(t);
+                g.Assert(new Triple(t.Subject, t.Predicate, g.CreateLiteralNode(lit.Value, XsdString)));
+            }
         }
 
         private async Task RunNegativeRdfTest(CsvwTestDescription test) { }
