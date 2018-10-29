@@ -51,7 +51,7 @@ namespace DataDock.CsvWeb.Tests
             var manifestGraph = new Graph();
             manifestGraph.LoadFromFile("data\\test-suite\\manifest-rdf.ttl");
             var testReader = new CsvwtManifestReader(manifestGraph);
-            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test014"));
+            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test015"));
             SetupTest(test);
             await RunTestAsync(test);
         }
@@ -95,14 +95,17 @@ namespace DataDock.CsvWeb.Tests
                         .WithHeader("Content-Type", "application/turtle")
                         .WithStatusCode(200)
                     );
-            if (test.Implicit.Uri != null)
+            if (test.Implicit != null)
             {
-                _server.Given(Request.Create().WithPath("/" + test.Implicit.Uri).UsingGet())
-                    .RespondWith(
-                        Response.Create()
-                            .WithBodyFromFile(test.Implicit.LocalFilePath)
-                            .WithHeader("Content-Type", "application/csvm+json")
-                            .WithStatusCode(200));
+                foreach (var implictFile in test.Implicit)
+                {
+                    _server.Given(Request.Create().WithPath("/" + implictFile.Uri).UsingGet())
+                        .RespondWith(
+                            Response.Create()
+                                .WithBodyFromFile(implictFile.LocalFilePath)
+                                .WithHeader("Content-Type", "application/csvm+json")
+                                .WithStatusCode(200));
+                }
             }
         }
 
@@ -264,77 +267,84 @@ namespace DataDock.CsvWeb.Tests
             var csvtImplicit = _manifestGraph.CreateUriNode("csvt:implicit");
             var csvtHttpLink = _manifestGraph.CreateUriNode("csvt:httpLink");
 
-                // Don't pass tests that are not approved to the test runner
-                var approved = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, rdftApproval)
-                    .WithObject(rdftApproved).Any();
-                if (!approved) return null;
+            // Don't pass tests that are not approved to the test runner
+            var approved = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, rdftApproval)
+                .WithObject(rdftApproved).Any();
+            if (!approved) return null;
 
-                var type = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, rdfType)
-                    .Select(t => (t.Object as IUriNode)).FirstOrDefault()?.ToString();
-                if (type == null) return null;
-                CsvwTestType testType;
-                switch (type)
-                {
-                    case "http://www.w3.org/2013/csvw/tests/vocab#ToRdfTest":
-                        testType = CsvwTestType.ToRdfTest;
-                        break;
-                    case "http://www.w3.org/2013/csvw/tests/vocab#ToRdfTestWithWarnings":
-                        testType = CsvwTestType.ToRdfTestWithWarnings;
-                        break;
-                    case "http://www.w3.org/2013/csvw/tests/vocab#NegativeRdfTest":
-                        testType = CsvwTestType.NegativeRdfTest;
-                        break;
-                    default:
-                        throw new Exception("Unrecognized test type: " + type);
-                }
+            var type = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, rdfType)
+                .Select(t => (t.Object as IUriNode)).FirstOrDefault()?.ToString();
+            if (type == null) return null;
+            CsvwTestType testType;
+            switch (type)
+            {
+                case "http://www.w3.org/2013/csvw/tests/vocab#ToRdfTest":
+                    testType = CsvwTestType.ToRdfTest;
+                    break;
+                case "http://www.w3.org/2013/csvw/tests/vocab#ToRdfTestWithWarnings":
+                    testType = CsvwTestType.ToRdfTestWithWarnings;
+                    break;
+                case "http://www.w3.org/2013/csvw/tests/vocab#NegativeRdfTest":
+                    testType = CsvwTestType.NegativeRdfTest;
+                    break;
+                default:
+                    throw new Exception("Unrecognized test type: " + type);
+            }
 
-                var testId = testNode.Uri.Fragment;
-                var name = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, mfName)
-                    .Select(t => t.Object.AsValuedNode().AsString()).FirstOrDefault();
-                var comment = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, rdfsComment)
-                    .Select(t => t.Object.AsValuedNode().AsString()).FirstOrDefault();
-                var optionsNode = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, csvtOption)
-                    .Select(t => t.Object).FirstOrDefault();
-                var options = GetOptions(optionsNode);
-                var action = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, mfAction)
-                    .Select(t => (t.Object as IUriNode)?.Uri).FirstOrDefault();
-                var result = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, mfResult)
-                    .Select(t => (t.Object as IUriNode)?.Uri).FirstOrDefault();
-                var implicitResource = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, csvtImplicit)
-                    .Select(t => (t.Object as IUriNode)?.Uri).FirstOrDefault();
+            var testId = testNode.Uri.Fragment;
+            var name = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, mfName)
+                .Select(t => t.Object.AsValuedNode().AsString()).FirstOrDefault();
+            var comment = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, rdfsComment)
+                .Select(t => t.Object.AsValuedNode().AsString()).FirstOrDefault();
+            var optionsNode = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, csvtOption)
+                .Select(t => t.Object).FirstOrDefault();
+            var options = GetOptions(optionsNode);
+            var action = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, mfAction)
+                .Select(t => (t.Object as IUriNode)?.Uri).FirstOrDefault();
+            var result = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, mfResult)
+                .Select(t => (t.Object as IUriNode)?.Uri).FirstOrDefault();
+            var implicitResources = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, csvtImplicit)
+                .Select(t => (t.Object as IUriNode)?.Uri).ToList();
             var httpLink = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, csvtHttpLink)
                 .Select(t => (t.Object as ILiteralNode)?.Value).FirstOrDefault();
 
-                var relAction = action == null ? null : _manifestGraph.BaseUri.MakeRelativeUri(action);
-                var relResult = result == null ? null : _manifestGraph.BaseUri.MakeRelativeUri(result);
+            var relAction = action == null ? null : _manifestGraph.BaseUri.MakeRelativeUri(action);
+            var relResult = result == null ? null : _manifestGraph.BaseUri.MakeRelativeUri(result);
+            
+            var testDescription = new CsvwTestDescription
+            {
+                Id = testId,
+                Name = name,
+                Comment = comment,
+                TestType = testType,
+                Approved = true,
+                Options = options,
+                Action = new CsvwTestFileDescription
+                {
+                    Uri = relAction,
+                    LocalFilePath = action?.LocalPath
+                },
+                Result = new CsvwTestFileDescription
+                {
+                    Uri = relResult,
+                    LocalFilePath = result?.LocalPath
+                },
+                Implicit = new List<CsvwTestFileDescription>(),
+                HttpLink = httpLink
+            };
+
+            foreach (var implicitResource in implicitResources)
+            {
                 var relImplicit = implicitResource == null
                     ? null
                     : _manifestGraph.BaseUri.MakeRelativeUri(implicitResource);
-                var testDescription = new CsvwTestDescription
+                testDescription.Implicit.Add(new CsvwTestFileDescription
                 {
-                    Id = testId,
-                    Name = name,
-                    Comment = comment,
-                    TestType = testType,
-                    Approved = true,
-                    Options = options,
-                    Action = new CsvwTestFileDescription
-                    {
-                        Uri = relAction,
-                        LocalFilePath = action?.LocalPath
-                    },
-                    Result = new CsvwTestFileDescription
-                    {
-                        Uri = relResult,
-                        LocalFilePath = result?.LocalPath
-                    },
-                    Implicit = new CsvwTestFileDescription
-                    {
-                        Uri = relImplicit,
-                        LocalFilePath = implicitResource?.LocalPath
-                    },
-                    HttpLink = httpLink
-                };
+                    Uri = relImplicit,
+                    LocalFilePath = implicitResource?.LocalPath
+                });
+            }
+
             return testDescription;
         }
 
@@ -407,7 +417,7 @@ namespace DataDock.CsvWeb.Tests
         public CsvwOptions Options;
         public CsvwTestFileDescription Action;
         public CsvwTestFileDescription Result;
-        public CsvwTestFileDescription Implicit;
+        public List<CsvwTestFileDescription> Implicit;
         public string HttpLink;
     }
 
