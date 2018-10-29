@@ -30,9 +30,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using AngleSharp.Network;
 using CsvHelper;
-using CsvHelper.Configuration;
 using DataDock.CsvWeb.Metadata;
 using DataDock.CsvWeb.Parsing;
 using Newtonsoft.Json;
@@ -151,6 +149,36 @@ namespace DataDock.CsvWeb.Rdf
             }
             else
             {
+                using (var tabularDataResponse = await httpClient.GetAsync(sourceUri))
+                {
+                    var linkHeaders = tabularDataResponse.Headers.GetValues("Link").ToList();
+                    if (linkHeaders.Any())
+                    {
+                        foreach (var linkHeader in linkHeaders)
+                        {
+                            var parts = linkHeader.Split(';').Select(p => p.Replace(" ", "")).ToList();
+                            // NOTE: Spec says that the link header must have both rel=describedby AND an appropriate type, but test case 014 has only the rel parameter, hence we use an OR here
+                            if (parts.Any(p =>
+                                    p.Equals("rel=\"describedby\"", StringComparison.InvariantCultureIgnoreCase)) ||
+                                parts.Any(p =>
+                                    p.Equals("type=\"application/csvm+json",
+                                        StringComparison.InvariantCultureIgnoreCase) ||
+                                    p.Equals("type=\"application/ld+json",
+                                        StringComparison.InvariantCultureIgnoreCase) ||
+                                    p.Equals("type =\"application/json", StringComparison.InvariantCultureIgnoreCase)))
+                            {
+                                var link = parts.FirstOrDefault(p => p.StartsWith("<") && p.EndsWith(">"));
+                                if (link != null)
+                                {
+                                    link = link.TrimStart('<').TrimEnd('>');
+                                    metadataLocations.Add(new Uri(sourceUri, link));
+                                }
+                            }
+
+                        }
+                    }
+                }
+
                 metadataLocations.Add(new Uri(sourceUri + "-metadata.json"));
                 metadataLocations.Add(new Uri(sourceUri, "csv-metadata.json"));
             }

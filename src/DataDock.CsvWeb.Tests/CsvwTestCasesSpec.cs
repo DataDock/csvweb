@@ -46,12 +46,12 @@ namespace DataDock.CsvWeb.Tests
 
         /* KA: An example of how to setup and run a single test for debugging purposes */
         [Fact]
-        public async void RunTest013()
+        public async void RunSingleTest()
         {
             var manifestGraph = new Graph();
             manifestGraph.LoadFromFile("data\\test-suite\\manifest-rdf.ttl");
             var testReader = new CsvwtManifestReader(manifestGraph);
-            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test013"));
+            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test014"));
             SetupTest(test);
             await RunTestAsync(test);
         }
@@ -75,14 +75,18 @@ namespace DataDock.CsvWeb.Tests
 
         private void SetupTest(CsvwTestDescription test)
         {
+            var csvResponse = Response.Create()
+                .WithBodyFromFile(test.Action.LocalFilePath)
+                .WithHeader("Content-Type", "text/csv")
+                .WithStatusCode(200);
+            if (!string.IsNullOrEmpty(test.HttpLink))
+            {
+                csvResponse = csvResponse.WithHeader("Link", test.HttpLink);
+            }
+
             _server
                 .Given(Request.Create().WithPath("/" + test.Action.Uri).UsingGet())
-                .RespondWith(
-                    Response.Create()
-                        .WithBodyFromFile(test.Action.LocalFilePath)
-                        .WithHeader("Content-Type", "text/csv")
-                        .WithStatusCode(200)
-                    );
+                .RespondWith(csvResponse);
             _server
                 .Given(Request.Create().WithPath("/" + test.Result.Uri).UsingGet())
                 .RespondWith(
@@ -258,6 +262,7 @@ namespace DataDock.CsvWeb.Tests
             var rdftApproved = _manifestGraph.CreateUriNode("rdft:Approved");
             var csvtOption = _manifestGraph.CreateUriNode("csvt:option");
             var csvtImplicit = _manifestGraph.CreateUriNode("csvt:implicit");
+            var csvtHttpLink = _manifestGraph.CreateUriNode("csvt:httpLink");
 
                 // Don't pass tests that are not approved to the test runner
                 var approved = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, rdftApproval)
@@ -297,6 +302,8 @@ namespace DataDock.CsvWeb.Tests
                     .Select(t => (t.Object as IUriNode)?.Uri).FirstOrDefault();
                 var implicitResource = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, csvtImplicit)
                     .Select(t => (t.Object as IUriNode)?.Uri).FirstOrDefault();
+            var httpLink = _manifestGraph.GetTriplesWithSubjectPredicate(testNode, csvtHttpLink)
+                .Select(t => (t.Object as ILiteralNode)?.Value).FirstOrDefault();
 
                 var relAction = action == null ? null : _manifestGraph.BaseUri.MakeRelativeUri(action);
                 var relResult = result == null ? null : _manifestGraph.BaseUri.MakeRelativeUri(result);
@@ -325,7 +332,8 @@ namespace DataDock.CsvWeb.Tests
                     {
                         Uri = relImplicit,
                         LocalFilePath = implicitResource?.LocalPath
-                    }
+                    },
+                    HttpLink = httpLink
                 };
             return testDescription;
         }
@@ -400,6 +408,7 @@ namespace DataDock.CsvWeb.Tests
         public CsvwTestFileDescription Action;
         public CsvwTestFileDescription Result;
         public CsvwTestFileDescription Implicit;
+        public string HttpLink;
     }
 
     public class CsvwTestFileDescription
