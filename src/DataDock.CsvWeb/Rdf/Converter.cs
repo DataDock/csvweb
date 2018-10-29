@@ -151,10 +151,9 @@ namespace DataDock.CsvWeb.Rdf
             {
                 using (var tabularDataResponse = await httpClient.GetAsync(sourceUri))
                 {
-                    var linkHeaders = tabularDataResponse.Headers.GetValues("Link").ToList();
-                    if (linkHeaders.Any())
+                    if (tabularDataResponse.Headers.Contains("Link")) 
                     {
-                        foreach (var linkHeader in linkHeaders)
+                        foreach (var linkHeader in tabularDataResponse.Headers.GetValues("Link"))
                         {
                             var parts = linkHeader.Split(';').Select(p => p.Replace(" ", "")).ToList();
                             // NOTE: Spec says that the link header must have both rel=describedby AND an appropriate type, but test case 014 has only the rel parameter, hence we use an OR here
