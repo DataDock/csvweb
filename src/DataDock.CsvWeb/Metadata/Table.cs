@@ -29,17 +29,13 @@ namespace DataDock.CsvWeb.Metadata
     public class Table : InheritedPropertyContainer, ICommonPropertyContainer
     {
         /// <summary>
-        /// Creates a new table in its own anonymous table group
-        /// </summary>
-        public Table() : this(new TableGroup()) {  }
-
-        /// <summary>
         /// Creates a new table in the specified parent table group
         /// </summary>
         /// <param name="tableGroup"></param>
         public Table(TableGroup tableGroup) : base(tableGroup)
         {
             tableGroup.Tables.Add(this);
+            Dialect = tableGroup.Dialect ?? new Dialect();
         }
 
         /// <summary>
@@ -50,8 +46,13 @@ namespace DataDock.CsvWeb.Metadata
         /// The URL from which the table content can be loaded
         /// </summary>
         public Uri Url { get; set; }
+
         public Schema TableSchema { get; set; }
+
+        public Dialect Dialect { get; set; }
+
         public bool SuppressOutput { get; set; }
+
         public JObject CommonProperties { get; } = new JObject();
     }
 }

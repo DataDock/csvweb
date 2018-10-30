@@ -31,6 +31,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using CsvHelper;
+using CsvHelper.Configuration;
 using DataDock.CsvWeb.Metadata;
 using DataDock.CsvWeb.Parsing;
 using Newtonsoft.Json;
@@ -236,8 +237,8 @@ namespace DataDock.CsvWeb.Rdf
             }
             _rdfHandler.EndRdf(_errors.Count == 0);
         }
-        
-        private void Convert(Table tableMetadata, TextReader csvTextReader, bool hasHeaderRow = true)
+
+        private void Convert(Table tableMetadata, TextReader csvTextReader)
         {
             if (Mode == ConverterMode.Standard)
             {
@@ -263,105 +264,174 @@ namespace DataDock.CsvWeb.Rdf
                 EmitCommonProperties(_tableNode, tableMetadata);
             }
 
-            using (var csv = new CsvReader(csvTextReader))
+            using (var csv = CreateCsvReader(csvTextReader, tableMetadata.Dialect))
             {
-                if (csv.Read() && csv.ReadHeader())
+
+                // Ensure that the HeaderRowCount property is set;
+                tableMetadata.Dialect.HeaderRowCount =
+                    tableMetadata.Dialect.HeaderRowCount ?? (tableMetadata.Dialect.Header ? 1 : 0);
+                if (tableMetadata.Dialect.HeaderRowCount > 0)
                 {
-                    if (tableMetadata.TableSchema == null) tableMetadata.TableSchema = new Schema(tableMetadata);
-                    if (tableMetadata.TableSchema.Columns == null) AddTableColumns(tableMetadata.TableSchema, csv.Context.HeaderRecord);
-                    _headerRowCount = hasHeaderRow ? 1 : 0;
-
-                    while (csv.Read())
+                    csv.Read();
+                    csv.ReadHeader();
+                    if (tableMetadata.Dialect.HeaderRowCount > 1)
                     {
-                        // Report progress
-                        if (csv.Context.Row % _reportInterval == 0)
+                        for (var i = 0; i < tableMetadata.Dialect.HeaderRowCount - 1; i++) csv.Read();
+                    }
+                }
+
+                if (tableMetadata.TableSchema == null) tableMetadata.TableSchema = new Schema(tableMetadata);
+                if (tableMetadata.TableSchema.Columns == null)
+                {
+                    if (tableMetadata.Dialect.HeaderRowCount > 0)
+                    {
+                        AddTableColumns(tableMetadata.TableSchema, csv.Context.HeaderRecord);
+                    }
+                    else
+                    {
+                        tableMetadata.TableSchema.Columns = new List<ColumnDescription>();
+                    }
+                }
+
+                _headerRowCount = tableMetadata.Dialect.HeaderRowCount.Value;
+
+                while (csv.Read())
+                {
+                    // Report progress
+                    if (csv.Context.Row % _reportInterval == 0)
+                    {
+                        _progress?.Report(csv.Context.Row);
+                    }
+
+                    if (Mode == ConverterMode.Standard)
+                    {
+                        // 4.6.1 In standard mode only, establish a new blank node R which represents the current row.
+                        _rowNode = _rdfHandler.CreateBlankNode();
+                        // 4.6.2 In standard mode only, relate the row to the table
+                        _rdfHandler.HandleTriple(new Triple(
+                            _tableNode,
+                            _rdfHandler.CreateUriNode(UriFactory.Create(CSVW_NS + "row")),
+                            _rowNode));
+                        // 4.6.3 In standard mode only, specify the type of node R as csvw:Row
+                        _rdfHandler.HandleTriple(new Triple(
+                            _rowNode,
+                            _rdfHandler.CreateUriNode(UriFactory.Create(RdfSpecsHelper.RdfType)),
+                            _rdfHandler.CreateUriNode(UriFactory.Create(CSVW_NS + "Row"))));
+                        // 4.6.4 In standard mode only, specify the row number n for the row
+                        _rdfHandler.HandleTriple(new Triple(
+                            _rowNode,
+                            _rdfHandler.CreateUriNode(UriFactory.Create(CSVW_NS + "rownum")),
+                            _rdfHandler.CreateLiteralNode(
+                                (csv.Context.Row - _headerRowCount).ToString("D", CultureInfo.InvariantCulture),
+                                UriFactory.Create(XmlSpecsHelper.XmlSchemaDataTypeInteger))
+                        ));
+                        // 4.6.5 In standard mode only, specify the row source number nsource for the row within the source tabular data file URL using a fragment-identifier as specified in [RFC7111]
+                        var rowUri = new Uri(tableMetadata.Url.ToString() + "#row=" + csv.Context.Row);
+                        _rdfHandler.HandleTriple(new Triple(
+                            _rowNode,
+                            _rdfHandler.CreateUriNode(UriFactory.Create(CSVW_NS + "url")),
+                            _rdfHandler.CreateUriNode(rowUri)));
+                        // TODO: Following rely on row annotations which are not currently supported
+                        // 4.6.6 In standard mode only, if row titles is not null, insert any titles specified for the row.
+                        // 4.6.7 In standard mode only, emit the triples generated by running the algorithm specified in section 6. JSON-LD to RDF over any non-core annotations specified for the row, with node R as an initial subject, the non-core annotation as property, and the value of the non-core annotation as value
+                    }
+
+                    // 4.6.8 Establish a new blank node Sdef to be used as the default subject for cells where about URL is undefined.
+                    var sDef = _rdfHandler.CreateBlankNode();
+
+                    //var colCount = tableMetadata.TableSchema.Columns.Count;
+                    var colCount = csv.Context.Record.Length;
+
+                    // For each cell in the current row where the suppress output annotation for the column associated with that cell is false:
+                    for (var colIx = 0; colIx < colCount; colIx++)
+                    {
+                        if (colIx >= tableMetadata.TableSchema.Columns.Count)
                         {
-                            _progress?.Report(csv.Context.Row);
+                            tableMetadata.TableSchema.Columns.Add(CreateDefaultColumn(tableMetadata, colIx + 1));
                         }
 
-                        if (Mode == ConverterMode.Standard)
+                        var c = tableMetadata.TableSchema.Columns[colIx];
+                        if (c.SupressOutput) continue;
+                        try
                         {
-                            // 4.6.1 In standard mode only, establish a new blank node R which represents the current row.
-                            _rowNode = _rdfHandler.CreateBlankNode();
-                            // 4.6.2 In standard mode only, relate the row to the table
-                            _rdfHandler.HandleTriple(new Triple(
-                                _tableNode,
-                                _rdfHandler.CreateUriNode(UriFactory.Create(CSVW_NS + "row")),
-                                _rowNode));
-                            // 4.6.3 In standard mode only, specify the type of node R as csvw:Row
-                            _rdfHandler.HandleTriple(new Triple(
-                                _rowNode,
-                                _rdfHandler.CreateUriNode(UriFactory.Create(RdfSpecsHelper.RdfType)),
-                                _rdfHandler.CreateUriNode(UriFactory.Create(CSVW_NS + "Row"))));
-                            // 4.6.4 In standard mode only, specify the row number n for the row
-                            _rdfHandler.HandleTriple(new Triple(
-                                _rowNode,
-                                _rdfHandler.CreateUriNode(UriFactory.Create(CSVW_NS + "rownum")),
-                                _rdfHandler.CreateLiteralNode(
-                                    (csv.Context.Row - _headerRowCount).ToString("D", CultureInfo.InvariantCulture),
-                                    UriFactory.Create(XmlSpecsHelper.XmlSchemaDataTypeInteger))
-                                ));
-                            // 4.6.5 In standard mode only, specify the row source number nsource for the row within the source tabular data file URL using a fragment-identifier as specified in [RFC7111]
-                            var rowUri = new Uri(tableMetadata.Url.ToString() + "#row=" + csv.Context.Row);
-                            _rdfHandler.HandleTriple(new Triple(
-                                _rowNode,
-                                _rdfHandler.CreateUriNode(UriFactory.Create(CSVW_NS + "url")),
-                                _rdfHandler.CreateUriNode(rowUri)));
-                            // TODO: Following rely on row annotations which are not currently supported
-                            // 4.6.6 In standard mode only, if row titles is not null, insert any titles specified for the row.
-                            // 4.6.7 In standard mode only, emit the triples generated by running the algorithm specified in section 6. JSON-LD to RDF over any non-core annotations specified for the row, with node R as an initial subject, the non-core annotation as property, and the value of the non-core annotation as value
+                            // 4.6.8.1 Establish a node S from about URL if set, or from Sdef otherwise as the current subject.
+                            var s = c.AboutUrl == null ? (INode) sDef : ResolveTemplate(tableMetadata, c.AboutUrl, csv);
+                            // 4.6.8.2 In standard mode only, relate the current subject to the current row
+                            if (Mode == ConverterMode.Standard)
+                            {
+                                _rdfHandler.HandleTriple(new Triple(_rowNode,
+                                    _rdfHandler.CreateUriNode(UriFactory.Create(CSVW_NS + "describes")), s));
+                            }
+
+                            // 4.6.8.3 If the value of property URL for the cell is not null, then predicate P takes the value of property URL.
+                            // Else, predicate P is constructed by appending the value of the name annotation for the column associated with the cell to the the tabular data file URL as a fragment identifier.
+                            var p = c.PropertyUrl == null
+                                ? _rdfHandler.CreateUriNode(new Uri(tableMetadata.Url, "#" + c.Name))
+                                : ResolveTemplate(tableMetadata, c.PropertyUrl, csv);
+                            var cellValue = csv.GetField(colIx) ?? c.Default;
+                            cellValue = CellParser.NormalizeCellValue(cellValue, c, c.Datatype);
+                            if (cellValue != null)
+                            {
+                                if (ValidateCellValue(cellValue, c.Datatype, c.Lang))
+                                {
+                                    var o = c.ValueUrl == null
+                                        ? (INode) CreateLiteralNode(cellValue, c.Datatype, c.Lang)
+                                        : ResolveTemplate(tableMetadata, c.ValueUrl, csv);
+                                    _rdfHandler.HandleTriple(new Triple(s, p, o));
+                                }
+                            }
                         }
-
-                        // 4.6.8 Establish a new blank node Sdef to be used as the default subject for cells where about URL is undefined.
-                        var sDef = _rdfHandler.CreateBlankNode();
-
-                        var colCount = tableMetadata.TableSchema.Columns.Count;
-                        // For each cell in the current row where the suppress output annotation for the column associated with that cell is false:
-                        for(var colIx = 0; colIx < colCount; colIx++)
+                        catch (Exception ex)
                         {
-                            var c = tableMetadata.TableSchema.Columns[colIx];
-                            if (c.SupressOutput) continue;
-                            try
-                            {
-                                // 4.6.8.1 Establish a node S from about URL if set, or from Sdef otherwise as the current subject.
-                                var s = c.AboutUrl == null ? (INode) sDef : ResolveTemplate(tableMetadata, c.AboutUrl, csv);
-                                // 4.6.8.2 In standard mode only, relate the current subject to the current row
-                                if (Mode == ConverterMode.Standard)
-                                {
-                                    _rdfHandler.HandleTriple(new Triple(_rowNode,
-                                        _rdfHandler.CreateUriNode(UriFactory.Create(CSVW_NS + "describes")), s));
-                                }
-
-                                // 4.6.8.3 If the value of property URL for the cell is not null, then predicate P takes the value of property URL.
-                                // Else, predicate P is constructed by appending the value of the name annotation for the column associated with the cell to the the tabular data file URL as a fragment identifier.
-                                var p = c.PropertyUrl == null
-                                    ? _rdfHandler.CreateUriNode(new Uri(tableMetadata.Url, "#" + c.Name))
-                                    : ResolveTemplate(tableMetadata, c.PropertyUrl, csv);
-                                var cellValue = csv.GetField(colIx) ?? c.Default;
-                                cellValue = CellParser.NormalizeCellValue(cellValue, c, c.Datatype);
-                                if (cellValue != null)
-                                {
-                                    if (ValidateCellValue(cellValue, c.Datatype, c.Lang))
-                                    {
-                                        var o = c.ValueUrl == null
-                                            ? (INode) CreateLiteralNode(cellValue, c.Datatype, c.Lang)
-                                            : ResolveTemplate(tableMetadata, c.ValueUrl, csv);
-                                        _rdfHandler.HandleTriple(new Triple(s, p, o));
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                var errorMessage = $"Conversion error at row {csv.Context.Row}, column '{c.Name}'. {ex.Message}";
-                                _errors.Add(errorMessage);
-                                _errorMessageSink?.Invoke(errorMessage);
-                            }
+                            var errorMessage =
+                                $"Conversion error at row {csv.Context.Row}, column '{c.Name}'. {ex.Message}";
+                            ReportError(errorMessage);
                         }
                     }
                 }
+
             }
         }
 
+        private ColumnDescription CreateDefaultColumn(Table t, int colNum)
+        {
+            var ret = new ColumnDescription(t.TableSchema)
+            {
+                Name = "_col." + colNum,
+                Datatype = new DatatypeDescription {Base = "string"},
+                Default = "",
+                Lang = null
+            };
+            return ret;
+        }
+
+        private void ReportError(string errorMessage)
+        {
+            _errors.Add(errorMessage);
+            _errorMessageSink?.Invoke(errorMessage);
+        }
+
+        private static CsvReader CreateCsvReader(TextReader textReader, Dialect csvDialect)
+        {
+            var configuration = new Configuration
+            {
+                AllowComments = true,
+                Comment = csvDialect.CommentPrefix[0],
+                Delimiter = csvDialect.Delimiter,
+                Encoding = Encoding.GetEncoding(csvDialect.Encoding),
+                HasHeaderRecord = (csvDialect.HeaderRowCount.HasValue && csvDialect.HeaderRowCount > 0) ||
+                                  csvDialect.Header
+            };
+            if (csvDialect.SkipBlankRows)
+            {
+                configuration.ShouldSkipRecord = row => row.All(string.IsNullOrEmpty);
+            }
+
+            // No trimming in the CSV reader as it doesn't provide all of the CSVW options. Do the trimming in the processor instead
+            configuration.TrimOptions = TrimOptions.None;
+
+            return new CsvReader(textReader, configuration);
+        }
         private void AddTableColumns(Schema tableSchema, string[] columns)
         {
             if (tableSchema.Columns != null) return;

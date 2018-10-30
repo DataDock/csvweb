@@ -86,12 +86,26 @@ namespace DataDock.CsvWeb.Parsing
             var tablesArray = t as JArray;
             if (tablesArray == null) throw new MetadataParseException("The value of the 'tables' property must be an array");
             var tableGroup = new TableGroup();
+
+            if (root.TryGetValue("dialect", out t))
+            {
+                if (!(t is JObject dialectObject))
+                {
+                    throw new MetadataParseException("The value of the 'dialect' property must be a JSON object");
+                }
+                tableGroup.Dialect = ParseDialect(dialectObject);
+            }
+            else
+            {
+                tableGroup.Dialect = new Dialect();
+            }
+
             foreach (var item in tablesArray)
             {
                 var tableDescriptionObject = item as JObject;
                 if (tableDescriptionObject == null)
                     throw new MetadataParseException("Items in the 'tables' array must be objects");
-                tableGroup.Tables.Add(ParseTable(tableGroup, tableDescriptionObject));
+                ParseTable(tableGroup, tableDescriptionObject);
             }
 
             if (root.TryGetValue("@id", out t))
@@ -100,6 +114,7 @@ namespace DataDock.CsvWeb.Parsing
                 if (id == null) throw new MetadataParseException("The value of the @id property must be a string");
                 tableGroup.Id = ResolveUri(id);
             }
+
             ParseInheritedProperties(root, tableGroup);
             ParseCommonProperties(root, tableGroup);
             return tableGroup;
@@ -118,13 +133,26 @@ namespace DataDock.CsvWeb.Parsing
             var table = new Table(tableGroup) {Url = tableUri};
             if (root.TryGetValue("tableSchema", out t))
             {
-                var schemaObject = t as JObject;
-                if (schemaObject == null)
+                if (!(t is JObject schemaObject))
                 {
                     throw new MetadataParseException("The value of the 'tableSchema' property must be a JSON object");
                 }
                 table.TableSchema = ParseTableSchema(table, schemaObject);
             }
+
+            if (root.TryGetValue("dialect", out t))
+            {
+                if (!(t is JObject dialectObject))
+                {
+                    throw new MetadataParseException("The value of the 'dialect' property must be a JSON object");
+                }
+                table.Dialect = ParseDialect(dialectObject);
+            }
+            else
+            {
+                table.Dialect = tableGroup.Dialect ?? new Dialect();
+            }
+
             ParseInheritedProperties(root, table);
             ParseCommonProperties(root, table);
             return table;
@@ -176,6 +204,22 @@ namespace DataDock.CsvWeb.Parsing
         {
             if (name.StartsWith("_")) throw new MetadataParseException("$Column name {name} is not valid. Column names must not start with an _ character.");
             // TODO: Other rules (rules for variables in URL templates)
+        }
+
+        private static Dialect ParseDialect(JToken root)
+        {
+            var d = root.ToObject<Dialect>();
+            if (!d.HeaderRowCount.HasValue)
+            {
+                d.HeaderRowCount = d.Header ? 1 : 0;
+            }
+
+            if (!d.Trim.HasValue)
+            {
+                d.Trim = d.SkipInitialSpace ? CsvTrim.Start : CsvTrim.False;
+            }
+
+            return d;
         }
 
         private static void ParseInheritedProperties(JObject root, InheritedPropertyContainer container)
