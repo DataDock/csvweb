@@ -51,7 +51,7 @@ namespace DataDock.CsvWeb.Tests
             var manifestGraph = new Graph();
             manifestGraph.LoadFromFile("data\\test-suite\\manifest-rdf.ttl");
             var testReader = new CsvwtManifestReader(manifestGraph);
-            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test023"));
+            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test027"));
             SetupTest(test);
             await RunTestAsync(test);
         }
@@ -119,7 +119,12 @@ namespace DataDock.CsvWeb.Tests
             var errorMessages = new List<string>();
             
             // Set up converter
-            var converter = new Converter(insertHandler, new DefaultResolver(), ConverterMode.Standard, errorMessage => errorMessages.Add(errorMessage), suppressStringDatatype:true);
+            var converter = new Converter(
+                insertHandler, 
+                new DefaultResolver(), 
+                test.Options.Minimal ? ConverterMode.Minimal : ConverterMode.Standard, 
+                errorMessage => errorMessages.Add(errorMessage), 
+                suppressStringDatatype:true);
             if (test.Options.Metadata != null)
             {
                 var localMetadata = File.ReadAllText(test.Options.Metadata.LocalPath);
@@ -382,10 +387,14 @@ namespace DataDock.CsvWeb.Tests
                 var metadata = _manifestGraph
                     .GetTriplesWithSubjectPredicate(optionsNode, _manifestGraph.CreateUriNode("csvt:metadata"))
                     .Select(t => t.Object).OfType<IUriNode>().FirstOrDefault();
+                var minimal = _manifestGraph
+                    .GetTriplesWithSubjectPredicate(optionsNode, _manifestGraph.CreateUriNode("csvt:minimal"))
+                    .Select(t => t.Object.AsValuedNode().AsBoolean()).FirstOrDefault();
                 return new CsvwOptions
                 {
                     NoProv = noProv,
-                    Metadata = metadata?.Uri
+                    Metadata = metadata?.Uri,
+                    Minimal = minimal
                 };
             }
 
@@ -454,6 +463,7 @@ namespace DataDock.CsvWeb.Tests
     {
         public bool NoProv;
         public Uri Metadata;
+        public bool Minimal;
     }
 
     public enum CsvwTestType
