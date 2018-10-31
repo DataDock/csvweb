@@ -368,7 +368,7 @@ namespace DataDock.CsvWeb.Rdf
                         }
 
                         var c = tableMetadata.TableSchema.Columns[colIx];
-                        if (c.SupressOutput) continue;
+                        if (c.SuppressOutput) continue;
 
                         context.Column = colIx + 1;
                         context.SourceColumn = sourceColumnIx + 1;
