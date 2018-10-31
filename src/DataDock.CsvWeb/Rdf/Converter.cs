@@ -390,16 +390,22 @@ namespace DataDock.CsvWeb.Rdf
                             var p = c.PropertyUrl == null
                                 ? _rdfHandler.CreateUriNode(new Uri(tableMetadata.Url, "#" + c.Name))
                                 : ResolveTemplate(tableMetadata, c.PropertyUrl, context, csv);
-                            var cellValue = csv.GetField(colIx) ?? c.Default;
-                            cellValue = CellParser.NormalizeCellValue(cellValue, c, c.Datatype);
-                            if (cellValue != null)
+                            if (c.ValueUrl != null)
                             {
-                                if (ValidateCellValue(cellValue, c.Datatype, c.Lang))
+                                var o = ResolveTemplate(tableMetadata, c.ValueUrl, context, csv);
+                                _rdfHandler.HandleTriple(new Triple(s, p, o));
+                            }
+                            else
+                            {
+                                var cellValue = csv.GetField(colIx) ?? c.Default;
+                                cellValue = CellParser.NormalizeCellValue(cellValue, c, c.Datatype);
+                                if (cellValue != null)
                                 {
-                                    var o = c.ValueUrl == null
-                                        ? (INode) CreateLiteralNode(cellValue, c.Datatype, c.Lang)
-                                        : ResolveTemplate(tableMetadata, c.ValueUrl, context, csv);
-                                    _rdfHandler.HandleTriple(new Triple(s, p, o));
+                                    if (ValidateCellValue(cellValue, c.Datatype, c.Lang))
+                                    {
+                                        var o = (INode) CreateLiteralNode(cellValue, c.Datatype, c.Lang);
+                                        _rdfHandler.HandleTriple(new Triple(s, p, o));
+                                    }
                                 }
                             }
                         }
