@@ -31,6 +31,7 @@ namespace DataDock.CsvWeb.Metadata
         private string _lang;
         private UriTemplate _propertyUrl;
         private UriTemplate _valueUrl;
+        private string[] _null = {string.Empty};
 
         public InheritedPropertyContainer(InheritedPropertyContainer parentContainer)
         {
@@ -73,6 +74,15 @@ namespace DataDock.CsvWeb.Metadata
         {
             get { return _valueUrl ?? Parent?.ValueUrl; }
             set { _valueUrl = value; }
+        }
+
+        /// <summary>
+        /// The string value(s) of cells that should be treated as NULL
+        /// </summary>
+        public string[] Null
+        {
+            get { return _null ?? Parent?.Null; }
+            set { _null = value; }
         }
     }
 }

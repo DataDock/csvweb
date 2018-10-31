@@ -199,6 +199,7 @@ namespace DataDock.CsvWeb.Parsing
                 columnDescription.SuppressOutput = suppress.Value<bool>();
             }
 
+            
             columnDescription.SuppressOutput = ParseSuppressOutput(root);
             ParseInheritedProperties(root, columnDescription);
             return columnDescription;
@@ -303,6 +304,18 @@ namespace DataDock.CsvWeb.Parsing
                     throw new MetadataParseException("The value of the 'valueUrl' property must be a string");
                 }
             }
+            if (root.TryGetValue("null", out t))
+            {
+                if (t is JArray array)
+                {
+                    container.Null = array.Select(item => item.Value<string>()).ToArray();
+                }
+                else if (t is JValue v)
+                {
+                    container.Null = new[] { v.Value<string>() };
+                }
+            }
+
         }
 
         private static DatatypeDescription ParseDatatype(JObject root)

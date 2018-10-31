@@ -393,11 +393,18 @@ namespace DataDock.CsvWeb.Rdf
                             if (c.ValueUrl != null)
                             {
                                 var o = ResolveTemplate(tableMetadata, c.ValueUrl, context, csv);
-                                _rdfHandler.HandleTriple(new Triple(s, p, o));
+                                if (o != null)
+                                {
+                                    _rdfHandler.HandleTriple(new Triple(s, p, o));
+                                }
                             }
                             else
                             {
                                 var cellValue = csv.GetField(colIx) ?? c.Default;
+                                if (c.Null != null && c.Null.Contains(cellValue))
+                                {
+                                    cellValue = null;
+                                }
                                 cellValue = CellParser.NormalizeCellValue(cellValue, c, c.Datatype);
                                 if (cellValue != null)
                                 {
@@ -556,9 +563,16 @@ namespace DataDock.CsvWeb.Rdf
 
         private IUriNode ResolveTemplate(Table tableMetadata, UriTemplate template, ConverterContext ctxt, CsvReader csv)
         {
-            var uri = template.Resolve((p) => ResolveProperty(tableMetadata, p, ctxt, csv));
-            if (!uri.IsAbsoluteUri) uri = new Uri(tableMetadata.Url, uri);
-            return _rdfHandler.CreateUriNode(uri);
+            try
+            {
+                var uri = template.Resolve((p) => ResolveProperty(tableMetadata, p, ctxt, csv));
+                if (!uri.IsAbsoluteUri) uri = new Uri(tableMetadata.Url, uri);
+                return _rdfHandler.CreateUriNode(uri);
+            }
+            catch (UriTemplateBindingException)
+            {
+                return null;
+            }
         }
 
         private string ResolveProperty(Table tableMetadata, string property, ConverterContext ctxt, CsvReader csv)
@@ -572,7 +586,11 @@ namespace DataDock.CsvWeb.Rdf
                 case "_name": return ctxt.Name;
                 default:
                     var columnIndex = GetColumnIndex(tableMetadata, property);
-                    return csv.GetField(columnIndex);
+                    var sourceColumnIndex = tableMetadata.Dialect.SkipColumns + columnIndex;
+                    var cellValue = csv.GetField(sourceColumnIndex);
+                    var columnDefinition = tableMetadata.TableSchema.Columns[columnIndex];
+                    if (columnDefinition.Null.Contains(cellValue)) return null;
+                    return cellValue;
             }
         }
 
