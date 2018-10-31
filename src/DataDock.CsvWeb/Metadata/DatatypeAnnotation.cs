@@ -45,6 +45,10 @@ namespace DataDock.CsvWeb.Metadata
         private const string Csvw = "http://www.w3.org/ns/csvw#";
         private const string Rdf = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 
+        public static DatatypeAnnotation Number = RegisterAnnotation("number", new Uri(Xsd + "double"));
+        public static DatatypeAnnotation Binary = RegisterAnnotation("binary", new Uri(Xsd + "base64Binary"));
+        public static DatatypeAnnotation Datetime = RegisterAnnotation("datetime", new Uri(Xsd + "dateTime"));
+        public static DatatypeAnnotation Any = RegisterAnnotation("any", new Uri(Xsd + "anyAtomicType"));
         public static DatatypeAnnotation AnyAtomicType = RegisterAnnotation("anyAtomicType",
             new Uri(Xsd + "anyAtomicType"));
         public static DatatypeAnnotation AnyURi = RegisterAnnotation("anyURI", new Uri(Xsd + "anyURI"));
