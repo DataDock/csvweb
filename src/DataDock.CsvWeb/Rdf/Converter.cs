@@ -307,12 +307,16 @@ namespace DataDock.CsvWeb.Rdf
 
                 _headerRowCount = tableMetadata.Dialect.HeaderRowCount.Value;
 
+                var context = new ConverterContext {Row = 0, SourceRow = _headerRowCount};
                 while (csv.Read())
                 {
+                    context.Row++;
+                    context.SourceRow++;
+
                     // Report progress
-                    if (csv.Context.Row % _reportInterval == 0)
+                    if (context.Row % _reportInterval == 0)
                     {
-                        _progress?.Report(csv.Context.Row);
+                        _progress?.Report(context.Row);
                     }
 
                     if (Mode == ConverterMode.Standard)
@@ -364,10 +368,15 @@ namespace DataDock.CsvWeb.Rdf
 
                         var c = tableMetadata.TableSchema.Columns[colIx];
                         if (c.SupressOutput) continue;
+
+                        context.Column = colIx + 1;
+                        context.SourceColumn = context.Column; // TODO: + skip columns
+                        context.Name = c.Name;
+
                         try
                         {
                             // 4.6.8.1 Establish a node S from about URL if set, or from Sdef otherwise as the current subject.
-                            var s = c.AboutUrl == null ? (INode) sDef : ResolveTemplate(tableMetadata, c.AboutUrl, csv);
+                            var s = c.AboutUrl == null ? (INode) sDef : ResolveTemplate(tableMetadata, c.AboutUrl, context, csv);
                             // 4.6.8.2 In standard mode only, relate the current subject to the current row
                             if (Mode == ConverterMode.Standard)
                             {
@@ -379,7 +388,7 @@ namespace DataDock.CsvWeb.Rdf
                             // Else, predicate P is constructed by appending the value of the name annotation for the column associated with the cell to the the tabular data file URL as a fragment identifier.
                             var p = c.PropertyUrl == null
                                 ? _rdfHandler.CreateUriNode(new Uri(tableMetadata.Url, "#" + c.Name))
-                                : ResolveTemplate(tableMetadata, c.PropertyUrl, csv);
+                                : ResolveTemplate(tableMetadata, c.PropertyUrl, context, csv);
                             var cellValue = csv.GetField(colIx) ?? c.Default;
                             cellValue = CellParser.NormalizeCellValue(cellValue, c, c.Datatype);
                             if (cellValue != null)
@@ -388,7 +397,7 @@ namespace DataDock.CsvWeb.Rdf
                                 {
                                     var o = c.ValueUrl == null
                                         ? (INode) CreateLiteralNode(cellValue, c.Datatype, c.Lang)
-                                        : ResolveTemplate(tableMetadata, c.ValueUrl, csv);
+                                        : ResolveTemplate(tableMetadata, c.ValueUrl, context, csv);
                                     _rdfHandler.HandleTriple(new Triple(s, p, o));
                                 }
                             }
@@ -532,18 +541,26 @@ namespace DataDock.CsvWeb.Rdf
             return lit;
         }
 
-        private IUriNode ResolveTemplate(Table tableMetadata, UriTemplate template, CsvReader csv)
+        private IUriNode ResolveTemplate(Table tableMetadata, UriTemplate template, ConverterContext ctxt, CsvReader csv)
         {
-            var uri = template.Resolve((p) => ResolveProperty(tableMetadata, p, csv));
+            var uri = template.Resolve((p) => ResolveProperty(tableMetadata, p, ctxt, csv));
             if (!uri.IsAbsoluteUri) uri = new Uri(tableMetadata.Url, uri);
             return _rdfHandler.CreateUriNode(uri);
         }
 
-        private string ResolveProperty(Table tableMetadata, string property, CsvReader csv)
+        private string ResolveProperty(Table tableMetadata, string property, ConverterContext ctxt, CsvReader csv)
         {
-            if (property.Equals("_row")) return (csv.Context.Row - _headerRowCount).ToString("D");
-            var columnIndex = GetColumnIndex(tableMetadata, property);
-            return csv.GetField(columnIndex);
+            switch (property)
+            {
+                case "_row": return (ctxt.Row).ToString("D");
+                case "_sourceRow": return ctxt.SourceRow.ToString("D");
+                case "_column": return ctxt.Column.ToString("D");
+                case "_sourceColumn": return ctxt.SourceColumn.ToString("D");
+                case "_name": return ctxt.Name;
+                default:
+                    var columnIndex = GetColumnIndex(tableMetadata, property);
+                    return csv.GetField(columnIndex);
+            }
         }
 
         private int GetColumnIndex(Table tableMetadata, string columnName)
@@ -710,9 +727,19 @@ namespace DataDock.CsvWeb.Rdf
             throw new MetadataParseException("Unable to expand URL value:  " + v);
         }
 
+        private class ConverterContext
+        {
+            public int Column;
+            public int SourceColumn;
+            public int Row;
+            public int SourceRow;
+            public string Name;
+        }
+
         public class ConversionError : Exception
         {
             public ConversionError(string msg) : base(msg) { }
         }
+
     }
 }
