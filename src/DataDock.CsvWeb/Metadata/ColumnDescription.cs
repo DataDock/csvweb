@@ -31,6 +31,6 @@ namespace DataDock.CsvWeb.Metadata
 
         public string Name { get; set; }
         public IList<LanguageTaggedString> Titles { get; set; }
-        public bool SupressOutput { get; set; }
+        public bool SuppressOutput { get; set; }
     }
 }
