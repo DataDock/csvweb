@@ -51,7 +51,7 @@ namespace DataDock.CsvWeb.Tests
             var manifestGraph = new Graph();
             manifestGraph.LoadFromFile("data\\test-suite\\manifest-rdf.ttl");
             var testReader = new CsvwtManifestReader(manifestGraph);
-            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test027"));
+            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test030"));
             SetupTest(test);
             await RunTestAsync(test);
         }
@@ -77,7 +77,7 @@ namespace DataDock.CsvWeb.Tests
         {
             var csvResponse = Response.Create()
                 .WithBodyFromFile(test.Action.LocalFilePath)
-                .WithHeader("Content-Type", "text/csv")
+                .WithHeader("Content-Type", test.Action.LocalFilePath.EndsWith(".json") ? "application/json" : "text/csv")
                 .WithStatusCode(200);
             if (!string.IsNullOrEmpty(test.HttpLink))
             {
