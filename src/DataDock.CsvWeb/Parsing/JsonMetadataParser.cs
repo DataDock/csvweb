@@ -153,6 +153,8 @@ namespace DataDock.CsvWeb.Parsing
                 table.Dialect = tableGroup.Dialect ?? new Dialect();
             }
 
+            table.SuppressOutput = ParseSuppressOutput(root);
+            
             ParseInheritedProperties(root, table);
             ParseCommonProperties(root, table);
             return table;
@@ -194,10 +196,25 @@ namespace DataDock.CsvWeb.Parsing
                 var suppress = t as JValue;
                 if (suppress == null || suppress.Type != JTokenType.Boolean)
                     throw new MetadataParseException("The value of the 'suppressOutput' property must be a boolean");
-                columnDescription.SupressOutput = suppress.Value<bool>();
+                columnDescription.SuppressOutput = suppress.Value<bool>();
             }
+
+            columnDescription.SuppressOutput = ParseSuppressOutput(root);
             ParseInheritedProperties(root, columnDescription);
             return columnDescription;
+        }
+
+        private static bool ParseSuppressOutput(JObject root)
+        {
+            if (root.TryGetValue("suppressOutput", out JToken t))
+            {
+                var suppress = t as JValue;
+                if (suppress == null || suppress.Type != JTokenType.Boolean)
+                    throw new MetadataParseException("The value of the 'suppressOutput' property must be a boolean");
+                return suppress.Value<bool>();
+            }
+
+            return false;
         }
 
         private static void ValidateColumnName(string name)
