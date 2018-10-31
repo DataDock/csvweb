@@ -532,8 +532,14 @@ namespace DataDock.CsvWeb.Rdf
                 case XmlSpecsHelper.XmlSchemaDataTypeDateTime:
                     if (!string.IsNullOrEmpty(datatype.Format))
                     {
-                        return DateTime.ParseExact(lit, datatype.Format, CultureInfo.InvariantCulture)
+                        var formattedString = DateTime.ParseExact(lit, datatype.Format, CultureInfo.InvariantCulture)
                             .ToString(XmlSpecsHelper.XmlSchemaDateTimeFormat);
+                        if (formattedString.EndsWith(".000000"))
+                        {
+                            formattedString = formattedString.Substring(0, formattedString.Length - 7);
+                        }
+
+                        return formattedString;
                     }
                     return DateTime.Parse(lit).ToString(XmlSpecsHelper.XmlSchemaDateTimeFormat);
                 // TODO: Implement numeric type normalization
