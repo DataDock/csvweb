@@ -51,7 +51,7 @@ namespace DataDock.CsvWeb.Tests
             var manifestGraph = new Graph();
             manifestGraph.LoadFromFile("data\\test-suite\\manifest-rdf.ttl");
             var testReader = new CsvwtManifestReader(manifestGraph);
-            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test030"));
+            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test034"));
             SetupTest(test);
             await RunTestAsync(test);
         }
@@ -178,7 +178,7 @@ namespace DataDock.CsvWeb.Tests
         {
             var sb = new StringBuilder();
             var formatter = new UncompressedTurtleFormatter();
-            var missingTriples = gd.AddedTriples.ToList();
+            var missingTriples = gd.RemovedTriples.ToList();
             if (missingTriples.Any())
             {
                 sb.Append($"{missingTriples.Count} triples expected and not found:\n");
@@ -189,7 +189,7 @@ namespace DataDock.CsvWeb.Tests
                 }
             }
 
-            var unexpectedTriples = gd.RemovedTriples.ToList();
+            var unexpectedTriples = gd.AddedTriples.ToList();
             if (unexpectedTriples.Any())
             {
                 sb.Append($"{unexpectedTriples.Count} triples found but not expected:\n");
