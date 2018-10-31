@@ -67,22 +67,15 @@ namespace DataDock.CsvWeb
         }
 
         /// <summary>
-        /// Resolve the template to an absolute or relateive IRI using the provided replacement function
+        /// Resolve the template to an absolute or relative IRI using the provided replacement function
         /// </summary>
         /// <param name="replacementFunc"></param>
         /// <returns></returns>
         public Uri Resolve(Func<string, string> replacementFunc)
         {
-            var resolvedTemplate = _replacementTermRegex.Replace(_templateString, match =>
-            {
-                var replacementValue = replacementFunc(match.Groups[1].Value);
-                if (string.IsNullOrEmpty(replacementValue))
-                {
-                    throw new UriTemplateBindingException(match.Groups[1].Value);
-                }
-                return replacementValue;
-            });
-
+            var resolvedTemplate = _replacementTermRegex.Replace(
+                _templateString,
+                match => ResolveExpression(match.Groups[1].Value, replacementFunc));
             return new Uri(resolvedTemplate, UriKind.RelativeOrAbsolute);
         }
 
@@ -96,6 +89,31 @@ namespace DataDock.CsvWeb
         public Uri Resolve(Uri baseUri, Func<string, string> replacementFunc)
         {
             return new Uri(baseUri, Resolve(replacementFunc));
+        }
+
+        private string ResolveExpression(string expr, Func<string, string> replacementFunc)
+        {
+            if (expr[0] == '#')
+            {
+                return "#" + string.Join(",", ResolveVariableList(expr.Substring(1), replacementFunc));
+            }
+
+            return string.Join(",", ResolveVariableList(expr, replacementFunc));
+        }
+
+
+        private IEnumerable<string> ResolveVariableList(string varList, Func<string, string> replacementFunc)
+        {
+            foreach (var v in varList.Split(','))
+            {
+                var replacmentValue = replacementFunc(v);
+                if (string.IsNullOrEmpty(replacmentValue))
+                {
+                    throw new UriTemplateBindingException(v);
+                }
+
+                yield return replacmentValue;
+            }
         }
     }
 }
