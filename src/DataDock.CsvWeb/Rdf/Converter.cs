@@ -27,6 +27,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
@@ -103,6 +104,10 @@ namespace DataDock.CsvWeb.Rdf
                     tableGroup = new TableGroup();
                     var table = new Table(tableGroup) {Url = sourceUri};
                 }
+            }
+            else if (IsJsonMimeType(response.Content.Headers.ContentType.MediaType))
+            {
+                tableGroup = ParseCsvMetadata(sourceUri, await response.Content.ReadAsStringAsync());
             }
 
             if (tableGroup != null)
@@ -198,6 +203,13 @@ namespace DataDock.CsvWeb.Rdf
         private static bool IsCsvMimeType(string mimeType)
         {
             return mimeType.Contains("text/csv");
+        }
+
+        private static bool IsJsonMimeType(string mimeType)
+        {
+            return mimeType.Equals("application/json", StringComparison.InvariantCultureIgnoreCase) ||
+                   mimeType.Equals("application/csvm+json", StringComparison.InvariantCultureIgnoreCase) ||
+                   mimeType.Equals("application/ld+json", StringComparison.InvariantCultureIgnoreCase);
         }
 
         private TableGroup ParseCsvMetadata(Uri baseUri, string metadata)
