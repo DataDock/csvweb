@@ -356,10 +356,11 @@ namespace DataDock.CsvWeb.Rdf
                     var sDef = _rdfHandler.CreateBlankNode();
 
                     //var colCount = tableMetadata.TableSchema.Columns.Count;
-                    var colCount = csv.Context.Record.Length;
-
+                    var sourceColumnCount = csv.Context.Record.Length;
+                    var sourceColumnIx = tableMetadata.Dialect.SkipColumns;
+                    var schemaColumnCount = tableMetadata.TableSchema?.Columns?.Count ?? 0;
                     // For each cell in the current row where the suppress output annotation for the column associated with that cell is false:
-                    for (var colIx = 0; colIx < colCount; colIx++)
+                    for (var colIx = 0; sourceColumnIx < sourceColumnCount || colIx < schemaColumnCount; colIx++, sourceColumnIx++)
                     {
                         if (colIx >= tableMetadata.TableSchema.Columns.Count)
                         {
@@ -370,7 +371,7 @@ namespace DataDock.CsvWeb.Rdf
                         if (c.SupressOutput) continue;
 
                         context.Column = colIx + 1;
-                        context.SourceColumn = context.Column; // TODO: + skip columns
+                        context.SourceColumn = sourceColumnIx + 1;
                         context.Name = c.Name;
 
                         try
