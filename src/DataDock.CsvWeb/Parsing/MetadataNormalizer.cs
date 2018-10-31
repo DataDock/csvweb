@@ -155,6 +155,17 @@ namespace DataDock.CsvWeb.Parsing
                         }
                     }
                 }
+                else if (MetadataSpecHelper.IsUriTemplateProperty(p.Name))
+                {
+                    if (p.Value.Type != JTokenType.String)
+                    {
+                        throw new MetadataParseException("Property " + p.Name + " must be a string. Found " +
+                                                         Enum.GetName(typeof(JTokenType), p.Value.Type));
+                    }
+
+                    var stringValue = p.Value.Value<string>();
+                    p.Value = ResolveId(stringValue, context);
+                }
             }
         }
 
@@ -247,20 +258,13 @@ namespace DataDock.CsvWeb.Parsing
                 var parts = id.Split(new[] {':'}, 2);
                 var prefix = parts[0];
                 var suffix = parts[1];
-                if (prefix.Equals("_") || suffix.StartsWith("//"))
-                {
-                    // Value is already and absolute IRI or blank node identifier
-                    return id;
-                }
-
-                if (_csvwContext.ContainsKey(prefix))
+                if (!(prefix.Equals("_") || suffix.StartsWith("//")) && _csvwContext.ContainsKey(prefix))
                 {
                     id = _csvwContext.GetValue(prefix).Value<string>() + suffix;
                 }
-
             }
 
-            return new Uri(context.BaseUri, id).ToString();
+            return id;
         }
 
         private class NormalizationContext
