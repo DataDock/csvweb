@@ -16,7 +16,7 @@ build_script:
 test_script:
   - ps: |
       cd src/DataDock.CsvWeb.Tests
-      dotnet xunit -configuration %CONFIGURATION% -notrait "Category=explicit" | Out-File test.log
+      dotnet xunit -configuration %CONFIGURATION% -notrait "Category=explicit" -fxversion 2.0.9 | Out-File test.log
       Push-AppveyorArtifact test.log
       if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode)  }
 
