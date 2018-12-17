@@ -16,7 +16,7 @@ build_script:
 test:
   assemblies:
     only:
-      - DataDock.CsvWeb.Tests
+      - DataDock.CsvWeb.Tests.dll
   categories:
     except:
       - explicit
