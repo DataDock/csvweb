@@ -20,5 +20,7 @@ namespace DataDock.CsvWeb.Metadata
         public Dialect Dialect { get; set; }
 
         public JObject CommonProperties { get; }
+
+        public JArray Notes { get; set; }
     }
 }

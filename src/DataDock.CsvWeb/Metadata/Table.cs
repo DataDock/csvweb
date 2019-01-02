@@ -54,5 +54,7 @@ namespace DataDock.CsvWeb.Metadata
         public bool SuppressOutput { get; set; }
 
         public JObject CommonProperties { get; } = new JObject();
+
+        public JArray Notes { get; set; }
     }
 }

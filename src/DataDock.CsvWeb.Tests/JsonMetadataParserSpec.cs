@@ -139,7 +139,7 @@ namespace DataDock.CsvWeb.Tests
                     Name = "latitude",
                     Datatype = new DatatypeDescription
                     {
-                        Base = "decimal", Format="d.ddd", 
+                        Base = "decimal", Format=new NumericFormatSpecification("#.##"), 
                         Constraints =
                         {
                             new ValueConstraint{ConstraintType = ValueConstraintType.Min, NumericThreshold = -90.0},
@@ -150,7 +150,7 @@ namespace DataDock.CsvWeb.Tests
                 t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
                 {
                     Name = "longitude",
-                    Datatype = new DatatypeDescription { Base = "decimal", Format="d.ddd" ,
+                    Datatype = new DatatypeDescription { Base = "decimal", Format = new NumericFormatSpecification("#.##"),
                         Constraints =
                         {
                             new ValueConstraint{ConstraintType = ValueConstraintType.MinExclusive, NumericThreshold = -180.0},

@@ -32,6 +32,8 @@ namespace DataDock.CsvWeb.Metadata
         private UriTemplate _propertyUrl;
         private UriTemplate _valueUrl;
         private string[] _null = {string.Empty};
+        private string _separator;
+        private bool? _required;
 
         public InheritedPropertyContainer(InheritedPropertyContainer parentContainer)
         {
@@ -83,6 +85,18 @@ namespace DataDock.CsvWeb.Metadata
         {
             get { return _null ?? Parent?.Null; }
             set { _null = value; }
+        }
+
+        public string Separator
+        {
+            get { return _separator ?? Parent?.Separator; }
+            set { _separator = value; }
+        }
+
+        public bool Required
+        {
+            get { return _required ?? (Parent?.Required ?? false); }
+            set { _required = value; }
         }
     }
 }

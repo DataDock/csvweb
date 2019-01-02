@@ -41,7 +41,7 @@ namespace DataDock.CsvWeb.Metadata
         /// <summary>
         /// The annotation that defines the format of a value of this type, used when parsing a string value
         /// </summary>
-        public string Format { get; set; }
+        public IFormatSpecification Format { get; set; }
 
         /// <summary>
         /// Constraints derived from the constraint annotations

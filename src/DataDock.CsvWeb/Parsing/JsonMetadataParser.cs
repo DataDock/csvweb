@@ -117,12 +117,14 @@ namespace DataDock.CsvWeb.Parsing
 
             ParseInheritedProperties(root, tableGroup);
             ParseCommonProperties(root, tableGroup);
+            tableGroup.Notes = ParseNotes(root);
             return tableGroup;
         }
 
         public Table ParseTable(TableGroup tableGroup, JObject root)
         {
             JToken t;
+            
             if (!root.TryGetValue("url", out t))
             {
                 throw new MetadataParseException("Did not find required 'url' property on table object");
@@ -131,6 +133,12 @@ namespace DataDock.CsvWeb.Parsing
             if (url == null) throw new MetadataParseException("The value of the 'url' property must be a string");
             var tableUri = ResolveUri(url);
             var table = new Table(tableGroup) {Url = tableUri};
+            if (root.TryGetValue("@id", out t))
+            {
+                var id = (t as JValue)?.Value<string>();
+                if (id == null) throw new MetadataParseException("The value of the @id property must be a string");
+                table.Id = ResolveUri(id);
+            }
             if (root.TryGetValue("tableSchema", out t))
             {
                 if (!(t is JObject schemaObject))
@@ -154,13 +162,13 @@ namespace DataDock.CsvWeb.Parsing
             }
 
             table.SuppressOutput = ParseSuppressOutput(root);
-            
             ParseInheritedProperties(root, table);
             ParseCommonProperties(root, table);
+            table.Notes = ParseNotes(root);
             return table;
         }
 
-        private static Schema ParseTableSchema(Table table, JObject root)
+        private Schema ParseTableSchema(Table table, JObject root)
         {
             var schema = new Schema(table) {Columns = new List<ColumnDescription>()};
             ParseInheritedProperties(root, schema);
@@ -169,18 +177,20 @@ namespace DataDock.CsvWeb.Parsing
             {
                 var cols = t as JArray;
                 if (cols == null) throw new MetadataParseException("The value of the 'columns' property must be a JSON array");
+                var columnNumber = 1;
                 foreach (var item in cols)
                 {
                     var col = item as JObject;
                     if (col == null) throw new MetadataParseException("The items in the 'columns' array must be JSON objects");
-                    var colDesc = ParseColumnDescription(schema, col);
+                    var colDesc = ParseColumnDescription(schema, columnNumber, col);
                     schema.Columns.Add(colDesc);
+                    columnNumber++;
                 }
             }
             return schema;
         }
 
-        private static ColumnDescription ParseColumnDescription(Schema schema, JObject root)
+        private ColumnDescription ParseColumnDescription(Schema schema, int columnNumber, JObject root)
         {
             var columnDescription = new ColumnDescription(schema);
             JToken t;
@@ -199,7 +209,30 @@ namespace DataDock.CsvWeb.Parsing
                 columnDescription.SuppressOutput = suppress.Value<bool>();
             }
 
-            
+            if (root.TryGetValue("titles", out t))
+            {
+                columnDescription.Titles = ParseNaturalLanguageProperty(t);
+            }
+
+            if (root.TryGetValue("default", out t))
+            {
+                var defaultValue = t as JValue;
+                if (defaultValue == null || defaultValue.Type != JTokenType.String) throw new MetadataParseException("The value of the 'default' property must be a string");
+                columnDescription.Default = defaultValue.Value<string>();
+            }
+
+            if (columnDescription.Name == null && columnDescription.Titles != null)
+            {
+                columnDescription.Name = columnDescription.Titles.Where(x => x.LanguageTag.Equals(_defaultLanguage))
+                                             .Select(x => x.Value).FirstOrDefault() ?? 
+                                         columnDescription.Titles.Where(x => x.LanguageTag == "und")
+                                             .Select(x => x.Value).FirstOrDefault();
+            }
+
+            if (columnDescription.Name == null)
+            {
+                columnDescription.Name = "_col." + columnNumber;
+            }
             columnDescription.SuppressOutput = ParseSuppressOutput(root);
             ParseInheritedProperties(root, columnDescription);
             return columnDescription;
@@ -216,6 +249,42 @@ namespace DataDock.CsvWeb.Parsing
             }
 
             return false;
+        }
+
+        private IList<LanguageTaggedString> ParseNaturalLanguageProperty(JToken tok)
+        {
+            var ret = new List<LanguageTaggedString>();
+            if (tok is JValue jv && jv.Type == JTokenType.String)
+            {
+                ret.Add(new LanguageTaggedString {LanguageTag = _defaultLanguage, Value = jv.Value<string>()});
+            }
+            else if (tok is JObject o)
+            {
+                foreach (var p in o.Properties())
+                {
+                    if (p.Value is JArray valArray)
+                    {
+                        foreach (var v in valArray)
+                        {
+                            ret.Add(new LanguageTaggedString
+                                {LanguageTag = p.Name, Value = v.Value<string>()});
+                        }
+                    }
+                    else
+                    {
+                        ret.Add(new LanguageTaggedString {LanguageTag = p.Name, Value = p.Value.Value<string>()});
+                    }
+                }
+            }
+            else if (tok is JArray valArray)
+            {
+                foreach (var item in valArray)
+                {
+                    ret.AddRange(ParseNaturalLanguageProperty(item));
+                }
+            }
+
+            return ret;
         }
 
         private static void ValidateColumnName(string name)
@@ -265,6 +334,19 @@ namespace DataDock.CsvWeb.Parsing
                     }
                 }
             }
+
+            if (root.TryGetValue("lang", out t))
+            {
+                if (t is JValue v)
+                {
+                    container.Lang = v.Value<string>();
+                }
+                else
+                {
+                    throw new MetadataParseException("The value of the 'lang' property must be a string");
+                }
+            }
+
             if (root.TryGetValue("aboutUrl", out t))
             {
                 var aboutUrlVal = t as JValue;
@@ -316,6 +398,18 @@ namespace DataDock.CsvWeb.Parsing
                 }
             }
 
+            if (root.TryGetValue("separator", out t))
+            {
+                if (t is JValue v)
+                {
+                    container.Separator = v.Value<string>();
+                }
+                else
+                {
+                    throw new MetadataParseException("The value of the 'separator' property must be a string");
+                }
+            }
+
         }
 
         private static DatatypeDescription ParseDatatype(JObject root)
@@ -340,7 +434,20 @@ namespace DataDock.CsvWeb.Parsing
 
             if (root.TryGetValue("format", out t))
             {
-                datatype.Format = t.Value<string>();
+                switch (datatype.Base)
+                {
+                    case "boolean":
+                        datatype.Format = new BooleanFormatSpecification(t.Value<string>());
+                        break;
+                    case "date":
+                        datatype.Format = new DateFormatSpecification(t.Value<string>());
+                        break;
+                    case "datetime":
+                        datatype.Format = new DateTimeFormatSpecification(t.Value<string>());
+                        break;
+                    default:
+                        throw new NotImplementedException($"Support for format annotations on the datatype '{datatype.Base}' is not yet implemented");
+                }
             }
 
             if (root.TryGetValue("minimum", out t))
@@ -426,6 +533,20 @@ namespace DataDock.CsvWeb.Parsing
                     container.CommonProperties.Add(p.DeepClone());
                 }
             }
+        }
+
+        private JArray ParseNotes(JObject root)
+        {
+            if (root.TryGetValue("notes", out JToken t))
+            {
+                if (!(t is JArray notesArray))
+                {
+                    throw new MetadataParseException("The value of the 'notes' property must be a JSON array");
+                }
+                return notesArray.DeepClone() as JArray;
+            }
+
+            return null;
         }
     }
 }

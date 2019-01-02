@@ -51,7 +51,7 @@ namespace DataDock.CsvWeb.Tests
             var manifestGraph = new Graph();
             manifestGraph.LoadFromFile("data\\test-suite\\manifest-rdf.ttl");
             var testReader = new CsvwtManifestReader(manifestGraph);
-            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test034"));
+            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test038"));
             SetupTest(test);
             await RunTestAsync(test);
         }
@@ -139,6 +139,8 @@ namespace DataDock.CsvWeb.Tests
             //var table = new Table(tableGroup) {Url = new Uri(_baseUri, test.Action.Uri)};
             //await converter.ConvertAsync(tableGroup, new DefaultResolver());
 
+            converter.Errors.Should().BeEmpty("Expected no errors during conversion. Got:\n\t" +
+                                              string.Join("\n\t", converter.Errors));
             var differ = new GraphDiff();
             NormalizeLiterals(expect);
             NormalizeLiterals(actual);
