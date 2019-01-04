@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using Newtonsoft.Json;
@@ -95,7 +96,7 @@ namespace DataDock.CsvWeb.Parsing
                 EnsureType(o, "Template");
             }
 
-            foreach (var p in o.Properties())
+            foreach (var p in o.Properties().ToList())
             {
                 if (MetadataSpecHelper.IsCommonProperty(p.Name) || p.Name.Equals("notes"))
                 {
@@ -105,15 +106,18 @@ namespace DataDock.CsvWeb.Parsing
                 {
                     if (!(p.Value is JArray))
                     {
-                        p.Value = new JArray(p.Value);
+                        Warnings.Add(new ParserWarning(p, "Expected property value to be an array. The given property value will not be processed."));
+                        o.Remove(p.Name);
                     }
-
-                    var array = (JArray) p.Value;
-                    foreach (var t in array)
+                    else
                     {
-                        if (t is JObject item)
+                        var array = (JArray) p.Value;
+                        foreach (var t in array)
                         {
-                            NormalizeObject(item, context, p.Name);
+                            if (t is JObject item)
+                            {
+                                NormalizeObject(item, context, p.Name);
+                            }
                         }
                     }
                 }
