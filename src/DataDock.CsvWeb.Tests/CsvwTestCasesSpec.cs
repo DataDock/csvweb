@@ -52,7 +52,7 @@ namespace DataDock.CsvWeb.Tests
             var manifestGraph = new Graph();
             manifestGraph.LoadFromFile("data\\test-suite\\manifest-rdf.ttl");
             var testReader = new CsvwtManifestReader(manifestGraph);
-            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test062"));
+            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test074"));
             var sw = new Stopwatch();
             sw.Start();
             SetupTest(test);
@@ -95,14 +95,19 @@ namespace DataDock.CsvWeb.Tests
             _server
                 .Given(Request.Create().WithPath("/" + test.Action.Uri).UsingGet())
                 .RespondWith(csvResponse);
-            _server
-                .Given(Request.Create().WithPath("/" + test.Result.Uri).UsingGet())
-                .RespondWith(
-                    Response.Create()
-                        .WithBodyFromFile(test.Result.LocalFilePath)
-                        .WithHeader("Content-Type", "application/turtle")
-                        .WithStatusCode(200)
+
+            if (test.Result.LocalFilePath != null)
+            {
+                _server
+                    .Given(Request.Create().WithPath("/" + test.Result.Uri).UsingGet())
+                    .RespondWith(
+                        Response.Create()
+                            .WithBodyFromFile(test.Result.LocalFilePath)
+                            .WithHeader("Content-Type", "application/turtle")
+                            .WithStatusCode(200)
                     );
+            }
+
             if (test.Implicit != null)
             {
                 foreach (var implictFile in test.Implicit)
@@ -182,7 +187,31 @@ namespace DataDock.CsvWeb.Tests
             }
         }
 
-        private async Task RunNegativeRdfTest(CsvwTestDescription test) { }
+        private async Task RunNegativeRdfTest(CsvwTestDescription test)
+        {
+            var actual = new Graph();
+            var insertHandler = new GraphHandler(actual);
+            var errorMessages = new List<string>();
+
+            // Set up converter
+            var converter = new Converter(
+                insertHandler,
+                new DefaultResolver(),
+                test.Options.Minimal ? ConverterMode.Minimal : ConverterMode.Standard,
+                errorMessage => errorMessages.Add(errorMessage),
+                suppressStringDatatype: true);
+            if (test.Options.Metadata != null)
+            {
+                var localMetadata = File.ReadAllText(test.Options.Metadata.LocalPath);
+                await converter.ConvertWithLocalMetadata(new Uri(_baseUri, test.Action.Uri), new HttpClient(), localMetadata);
+            }
+            else
+            {
+                await converter.ConvertAsync(new Uri(_baseUri, test.Action.Uri), new HttpClient());
+            }
+
+            Assert.NotEmpty(errorMessages);
+        }
 
         private string ReportGraphDiff(GraphDiffReport gd)
         {

@@ -220,6 +220,12 @@ namespace DataDock.CsvWeb.Rdf
 
         public async Task ConvertAsync(TableGroup tableGroup) 
         {
+            if (tableGroup.Tables.Count == 0)
+            {
+                ReportError("The CSV metadata must contain at least one table definition.");
+                return;
+            }
+
             _rdfHandler.StartRdf();
             _rdfHandler.HandleNamespace("rdf", new Uri("http://www.w3.org/1999/02/22-rdf-syntax-ns#"));
             _rdfHandler.HandleNamespace("csvw", new Uri(CSVW_NS));
