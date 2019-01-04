@@ -88,31 +88,38 @@ namespace DataDock.CsvWeb.Rdf
 
         public async Task ConvertAsync(Uri sourceUri, HttpClient httpClient)
         {
-            var response = await httpClient.GetAsync(sourceUri);
-            response.EnsureSuccessStatusCode();
-            TableGroup tableGroup = null;
-            if (IsCsvMimeType(response.Content.Headers.ContentType.MediaType))
+            try
             {
-                var metadataResponse = await LocateMetadata(sourceUri, httpClient);
-                if (metadataResponse != null && metadataResponse.IsSuccessStatusCode)
+                var response = await httpClient.GetAsync(sourceUri);
+                response.EnsureSuccessStatusCode();
+                TableGroup tableGroup = null;
+                if (IsCsvMimeType(response.Content.Headers.ContentType.MediaType))
                 {
-                    tableGroup = ParseCsvMetadata(metadataResponse.RequestMessage.RequestUri,
-                        await metadataResponse.Content.ReadAsStringAsync());
+                    var metadataResponse = await LocateMetadata(sourceUri, httpClient);
+                    if (metadataResponse != null && metadataResponse.IsSuccessStatusCode)
+                    {
+                        tableGroup = ParseCsvMetadata(metadataResponse.RequestMessage.RequestUri,
+                            await metadataResponse.Content.ReadAsStringAsync());
+                    }
+                    else
+                    {
+                        tableGroup = new TableGroup();
+                        var table = new Table(tableGroup) {Url = sourceUri};
+                    }
                 }
-                else
+                else if (IsJsonMimeType(response.Content.Headers.ContentType.MediaType))
                 {
-                    tableGroup = new TableGroup();
-                    var table = new Table(tableGroup) {Url = sourceUri};
+                    tableGroup = ParseCsvMetadata(sourceUri, await response.Content.ReadAsStringAsync());
                 }
-            }
-            else if (IsJsonMimeType(response.Content.Headers.ContentType.MediaType))
-            {
-                tableGroup = ParseCsvMetadata(sourceUri, await response.Content.ReadAsStringAsync());
-            }
 
-            if (tableGroup != null)
+                if (tableGroup != null)
+                {
+                    await ConvertAsync(tableGroup);
+                }
+            }
+            catch (MetadataParseException ex)
             {
-                await ConvertAsync(tableGroup);
+                ReportError(ex.Message);
             }
         }
 
