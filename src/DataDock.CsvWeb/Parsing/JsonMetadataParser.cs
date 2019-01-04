@@ -26,6 +26,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Xml;
 using DataDock.CsvWeb.Metadata;
 using Newtonsoft.Json;
@@ -294,20 +295,152 @@ namespace DataDock.CsvWeb.Parsing
             // TODO: Other rules (rules for variables in URL templates)
         }
 
-        private static Dialect ParseDialect(JToken root)
+        private Dialect ParseDialect(JObject root)
         {
-            var d = root.ToObject<Dialect>();
-            if (!d.HeaderRowCount.HasValue)
+            var dialect = new Dialect
             {
-                d.HeaderRowCount = d.Header ? 1 : 0;
+                CommentPrefix = ParseStringProperty(root, "commentPrefix", "#"),
+                Delimiter = ParseStringProperty(root, "delimiter", ","),
+                DoubleQuote = ParseBooleanProperty(root, "doubleQuote", true),
+                Encoding = ParseStringProperty(root, "encoding", "utf-8"),
+                Header = ParseBooleanProperty(root, "header", true),
+                LineTerminators = ParseArrayOfStrings(root, "lineTerminators", new string[] {"\r\n", "\n"}),
+                QuoteChar = ParseStringProperty(root, "quoteChar", "\"", true),
+                SkipBlankRows = ParseBooleanProperty(root, "skipBlankRows", false),
+                SkipColumns = ParseNonNegativeIntegerProperty(root, "skipColumns", 0),
+                SkipInitialSpace = ParseBooleanProperty(root, "skipInitialSpace", false),
+                SkipRows = ParseNonNegativeIntegerProperty(root, "skipRows", 0)
+            };
+
+            dialect.HeaderRowCount = ParseNonNegativeIntegerProperty(root, "headerRowCount", dialect.Header ? 1 : 0);
+            if (root.ContainsKey("trim"))
+            {
+                var trimProperty = root.Property("trim");
+                if (trimProperty.Value.Type == JTokenType.Boolean)
+                {
+                    dialect.Trim = trimProperty.Value.Value<bool>() ? CsvTrim.True : CsvTrim.False;
+                }
+                else if (trimProperty.Value.Type == JTokenType.String)
+                {
+                    switch (trimProperty.Value<string>())
+                    {
+                        case "true":
+                            dialect.Trim = CsvTrim.True;
+                            break;
+                        case "false":
+                            dialect.Trim = CsvTrim.False;
+                            break;
+                        case "start":
+                            dialect.Trim = CsvTrim.Start;
+                            break;
+                        case "end":
+                            dialect.Trim = CsvTrim.End;
+                            break;
+                        default:
+                            Warn(trimProperty,
+                                $"Expected value to be one of 'true', 'false', 'start', or 'end'. Found {trimProperty.Value<string>()}. Using default value 'true'");
+                            dialect.Trim = CsvTrim.True;
+                            break;
+                    }
+                }
+            }
+            else
+            {
+                dialect.Trim = dialect.SkipInitialSpace ? CsvTrim.Start : CsvTrim.False;
             }
 
-            if (!d.Trim.HasValue)
+            try
             {
-                d.Trim = d.SkipInitialSpace ? CsvTrim.Start : CsvTrim.False;
+                System.Text.Encoding.GetEncoding(dialect.Encoding);
+            }
+            catch (ArgumentException)
+            {
+                Warn(root.Property("encoding"), $"{root.Property("encoding").Value.Value<string>()} is not a recognized text encoding. Using default value 'utf-8'");
+                dialect.Encoding = "utf-8";
+            }
+            return dialect;
+        }
+
+        private string ParseStringProperty(JObject root, string propertyName, string defaultValue,
+            bool allowNull = false)
+        {
+            if (root.ContainsKey(propertyName))
+            {
+                var property = root.Property(propertyName);
+                if (property.Value.Type == JTokenType.String)
+                {
+                    return property.Value.Value<string>();
+                }
+
+                if (allowNull && property.Type == JTokenType.Null)
+                {
+                    return null;
+                }
+
+                Warn(property, "Value must be a string" + (allowNull ? " or null" : ""));
             }
 
-            return d;
+            return defaultValue;
+        }
+
+        private bool ParseBooleanProperty(JObject root, string propertyName, bool defaultValue)
+        {
+            if (root.ContainsKey(propertyName))
+            {
+                var property = root.Property(propertyName);
+                if (property.Value.Type == JTokenType.Boolean)
+                {
+                    return property.Value.Value<bool>();
+                }
+                Warn(property, "Value must be a boolean");
+            }
+            return defaultValue;
+        }
+
+        private int ParseIntegerProperty(JObject root, string propertyName, int defaultValue)
+        {
+            if (root.ContainsKey(propertyName))
+            {
+                var property = root.Property(propertyName);
+                if (property.Value.Type == JTokenType.Integer)
+                {
+                    return property.Value.Value<int>();
+                }
+                Warn(property, "Value must be a boolean");
+            }
+            return defaultValue;
+        }
+
+        private int ParseNonNegativeIntegerProperty(JObject root, string propertyName, int defaultValue)
+        {
+            var value = ParseIntegerProperty(root, propertyName, defaultValue);
+            if (value >= 0) return value;
+            Warn(root.Property(propertyName),
+                $"Expected value to be a non-negative integer. Found {value}.");
+            return defaultValue;
+        }
+
+        private string[] ParseArrayOfStrings(JObject root, string propertyName, string[] defaultValue,
+            bool allowSingleValue = true)
+        {
+            if (!root.ContainsKey(propertyName)) return defaultValue;
+
+            var property = root.Property(propertyName);
+            if (property.Value.Type == JTokenType.Array)
+            {
+                if (property.Value is JArray values)
+                {
+                    return values.Where(v => v.Type == JTokenType.String).Select(v => v.Value<string>()).ToArray();
+                }
+            }
+
+            if (allowSingleValue && property.Value.Type == JTokenType.String)
+            {
+                return new[] {property.Value.Value<string>()};
+            }
+
+            Warn(property, "Value must be an array of strings" + (allowSingleValue ? " or a string" : ""));
+            return defaultValue;
         }
 
         private void ParseInheritedProperties(JObject root, InheritedPropertyContainer container)
@@ -571,19 +704,7 @@ namespace DataDock.CsvWeb.Parsing
 
         private void Warn(JToken contextToken, string msg)
         {
-            Warnings.Append(new ParserWarning(contextToken.Path, msg));
-        }
-    }
-
-    internal class ParserWarning
-    {
-        public string Path { get; }
-        public string Message { get; }
-
-        public ParserWarning(string jsonPath, string message)
-        {
-            Path = jsonPath;
-            Message = message;
+            Warnings.Append(new ParserWarning(contextToken, msg));
         }
     }
 }

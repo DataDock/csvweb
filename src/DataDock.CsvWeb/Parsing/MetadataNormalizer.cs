@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -7,18 +8,20 @@ using Newtonsoft.Json.Linq;
 
 namespace DataDock.CsvWeb.Parsing
 {
-    public class MetadataNormalizer
+    internal class MetadataNormalizer
     {
         private readonly Uri _baseUri;
         private readonly string _defaultLanguage;
         private readonly JObject _csvwContext;
         private readonly ITableResolver _resolver;
+        public List<ParserWarning> Warnings { get; }
 
         public MetadataNormalizer(ITableResolver resolver, Uri baseUri, string defaultLanguage = null)
         {
             _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
             _baseUri = baseUri ?? throw new ArgumentNullException(nameof(baseUri));
             _defaultLanguage = defaultLanguage;
+            Warnings = new List<ParserWarning>();
             using (var reader =
                 new StreamReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("DataDock.CsvWeb.Resources.csvw.jsonld"),
                     Encoding.UTF8))
@@ -159,8 +162,8 @@ namespace DataDock.CsvWeb.Parsing
                 {
                     if (p.Value.Type != JTokenType.String)
                     {
-                        throw new MetadataParseException("Property " + p.Name + " must be a string. Found " +
-                                                         Enum.GetName(typeof(JTokenType), p.Value.Type));
+                        Warnings.Add(new ParserWarning(p.Path, "The value of the {p.Name} property must be a string"));
+                        p.Value = ResolveId("", context);
                     }
 
                     var stringValue = p.Value.Value<string>();
