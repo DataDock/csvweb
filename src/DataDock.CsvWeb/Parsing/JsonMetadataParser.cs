@@ -39,7 +39,7 @@ namespace DataDock.CsvWeb.Parsing
         private readonly ITableResolver _resolver;
         private readonly Uri _baseUri;
         private string _defaultLanguage;
-
+        private List<ParserWarning> Warnings { get; }
         
 
         public JsonMetadataParser(ITableResolver resolver, Uri baseUri, string defaultLanguage = null)
@@ -47,6 +47,7 @@ namespace DataDock.CsvWeb.Parsing
             _resolver = resolver;
             _baseUri = baseUri;
             _defaultLanguage = defaultLanguage;
+            Warnings = new List<ParserWarning>();
         }
 
         public TableGroup Parse(TextReader textReader)
@@ -309,7 +310,7 @@ namespace DataDock.CsvWeb.Parsing
             return d;
         }
 
-        private static void ParseInheritedProperties(JObject root, InheritedPropertyContainer container)
+        private void ParseInheritedProperties(JObject root, InheritedPropertyContainer container)
         {
             JToken t;
             if (root.TryGetValue("datatype", out t))
@@ -337,13 +338,21 @@ namespace DataDock.CsvWeb.Parsing
 
             if (root.TryGetValue("lang", out t))
             {
-                if (t is JValue v)
+                if (t is JValue v && v.Type == JTokenType.String)
                 {
-                    container.Lang = v.Value<string>();
+                    var langString = v.Value<string>();
+                    if (LanguageTag.IsValid(langString))
+                    {
+                        container.Lang = v.Value<string>();
+                    }
+                    else
+                    {
+                        Warn(t, $"The value '{langString}' is not a valid BCP-47 language tag.");
+                    }
                 }
                 else
                 {
-                    throw new MetadataParseException("The value of the 'lang' property must be a string");
+                    Warn(t, "The value of the 'lang' property must be a string");
                 }
             }
 
@@ -547,6 +556,23 @@ namespace DataDock.CsvWeb.Parsing
             }
 
             return null;
+        }
+
+        private void Warn(JToken contextToken, string msg)
+        {
+            Warnings.Append(new ParserWarning(contextToken.Path, msg));
+        }
+    }
+
+    internal class ParserWarning
+    {
+        public string Path { get; }
+        public string Message { get; }
+
+        public ParserWarning(string jsonPath, string message)
+        {
+            Path = jsonPath;
+            Message = message;
         }
     }
 }
