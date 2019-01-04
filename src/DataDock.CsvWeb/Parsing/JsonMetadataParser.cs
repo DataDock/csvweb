@@ -319,8 +319,14 @@ namespace DataDock.CsvWeb.Parsing
                 if (datatypeVal != null && datatypeVal.Type == JTokenType.String)
                 {
                     var datatypeId = datatypeVal.Value<string>();
-                    ValidateBaseDatatype(datatypeId);
-                    container.Datatype = new DatatypeDescription {Base = datatypeId};
+                    if (IsValidBaseDatatype(datatypeId))
+                    {
+                        container.Datatype = new DatatypeDescription {Base = datatypeId};
+                    }
+                    else
+                    {
+                        Warn(t, $"Unsupported base datatype '{datatypeId}");
+                    }
                 }
                 else
                 {
@@ -421,7 +427,7 @@ namespace DataDock.CsvWeb.Parsing
 
         }
 
-        private static DatatypeDescription ParseDatatype(JObject root)
+        private DatatypeDescription ParseDatatype(JObject root)
         {
             var datatype = new DatatypeDescription();
             JToken t;
@@ -433,8 +439,15 @@ namespace DataDock.CsvWeb.Parsing
                     throw new MetadataParseException("The value of the 'base' property must be a string");
                 }
                 var datatypeId = baseVal.Value<string>();
-                ValidateBaseDatatype(datatypeId);
-                datatype.Base = datatypeId;
+                if (IsValidBaseDatatype(datatypeId))
+                {
+                    datatype.Base = datatypeId;
+                }
+                else
+                {
+                    Warn(t, $"Unsupported base datatype '{datatypeId}'");
+                    datatype.Base = "string";
+                }
             }
             else
             {
@@ -492,12 +505,10 @@ namespace DataDock.CsvWeb.Parsing
             return datatype;
         }
 
-        private static void ValidateBaseDatatype(string baseTypeId)
+        private static bool IsValidBaseDatatype(string baseTypeId)
         {
             var datatypeAnnotation = DatatypeAnnotation.GetAnnotationById(baseTypeId);
-            if (datatypeAnnotation == null)
-                throw new MetadataParseException(
-                    $"Unable to match the datatype '{baseTypeId}' to a known datatype");
+            return datatypeAnnotation != null;
         }
 
         private static ValueConstraint ParseConstraint(DatatypeDescription datatype, ValueConstraintType constraintType, JToken t)
