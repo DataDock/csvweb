@@ -59,8 +59,10 @@ namespace DataDock.CsvWeb.Parsing
             {
                 throw new MetadataParseException("Expected root of JSON document to be an object.");
             }
+
             var normalizer = new MetadataNormalizer(_resolver, _baseUri, _defaultLanguage);
             rootObject = normalizer.NormalizeMetadata(rootObject);
+
             return Parse(rootObject);
         }
 

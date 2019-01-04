@@ -46,41 +46,55 @@ namespace DataDock.CsvWeb.Parsing
             return o;
         }
 
-        private void NormalizeObject(JObject o, NormalizationContext context, string parentProperty)
+        private void EnsureType(JObject o, string ensureValue)
         {
-            if (!o.ContainsKey("@type"))
+            if (o.ContainsKey("@type"))
             {
-                // Attempt to determine object type
-                if (o.ContainsKey("tables"))
+                var typeValue = o["@type"].Value<string>();
+                if (typeValue != ensureValue)
                 {
-                    o["@type"] = "TableGroup";
-                }
-
-                if (parentProperty == "tables" || o.ContainsKey("url"))
-                {
-                    o["@type"] = "Table";
-                }
-
-                if (parentProperty == "tableSchema")
-                {
-                    o["@type"] = "Schema";
-                }
-
-                if (parentProperty == "columns")
-                {
-                    o["@type"] = "Column";
-                }
-
-                if (parentProperty == "dialect")
-                {
-                    o["@type"] = "Dialect";
-                }
-
-                if (parentProperty == "transformations")
-                {
-                    o["@type"] = "Template";
+                    throw new MetadataParseException($"Error at {o.Path}. Expected @type property to be set to '{ensureValue}', but found '{typeValue}'");
                 }
             }
+            else
+            {
+                o["@type"] = ensureValue;
+            }
+        }
+
+        private void NormalizeObject(JObject o, NormalizationContext context, string parentProperty)
+        {
+            // Attempt to determine object type
+            if (o.ContainsKey("tables"))
+            {
+                EnsureType(o, "TableGroup");
+            }
+
+            if (parentProperty == "tables" || parentProperty == null && o.ContainsKey("url"))
+            {
+                EnsureType(o, "Table");
+            }
+
+            if (parentProperty == "tableSchema")
+            {
+                EnsureType(o, "Schema");
+            }
+
+            if (parentProperty == "columns")
+            {
+                EnsureType(o, "Column");
+            }
+
+            if (parentProperty == "dialect")
+            {
+                EnsureType(o, "Dialect");
+            }
+
+            if (parentProperty == "transformations")
+            {
+                EnsureType(o, "Template");
+            }
+
             foreach (var p in o.Properties())
             {
                 if (MetadataSpecHelper.IsCommonProperty(p.Name) || p.Name.Equals("notes"))
@@ -105,6 +119,10 @@ namespace DataDock.CsvWeb.Parsing
                 }
                 else if (MetadataSpecHelper.IsLinkProperty(p.Name))
                 {
+                    if (p.Name == "@id" && p.Value.Value<string>().StartsWith("_:"))
+                    {
+                        throw new MetadataParseException("An @id property may not start with the string '_:'");
+                    }
                     if (p.Value.Type == JTokenType.String)
                     {
                         p.Value = new Uri(context.BaseUri, p.Value.Value<string>()).ToString();
@@ -251,6 +269,11 @@ namespace DataDock.CsvWeb.Parsing
                 {
                     if (p.Name.Equals("@id"))
                     {
+                        var id = p.Value.Value<string>();
+                        if (id.StartsWith("_:"))
+                        {
+                            throw new MetadataParseException("An @id property must not start with '_:'");
+                        }
                         p.Value = ResolveId(p.Value.Value<string>(), context);
                     }
                     else if (!p.Name.Equals("@type"))
