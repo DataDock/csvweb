@@ -201,7 +201,18 @@ namespace DataDock.CsvWeb.Parsing
                     nc.BaseUri = new Uri(nc.BaseUri, o["@base"].Value<string>());
                 }
 
-                if (o.ContainsKey("@language")) nc.DefaultLangauge = o["@language"].Value<string>();
+                if (o.ContainsKey("@language"))
+                {
+                    var language = o["@language"].Value<string>();
+                    if (LanguageTag.IsValid(language))
+                    {
+                        nc.DefaultLangauge = language;
+                    }
+                    else
+                    {
+                        Warnings.Add(new ParserWarning(o.Property("@language"), "The value of the '@language' property must be a valid BCP-47 language tag."));
+                    }
+                }
                 return nc;
             }
 
