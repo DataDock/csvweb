@@ -114,7 +114,7 @@ namespace DataDock.CsvWeb.Parsing
 
             if (root.TryGetValue("@id", out t))
             {
-                tableGroup.Id = ParseId(t);
+                tableGroup.Id = ParseLinkProperty(t, "@id");
             }
 
             ParseInheritedProperties(root, tableGroup);
@@ -131,13 +131,11 @@ namespace DataDock.CsvWeb.Parsing
             {
                 throw new MetadataParseException("Did not find required 'url' property on table object");
             }
-            var url = (t as JValue)?.Value<string>();
-            if (url == null) throw new MetadataParseException("The value of the 'url' property must be a string");
-            var tableUri = ResolveUri(url);
+            var tableUri = ParseLinkProperty(t, "url");
             var table = new Table(tableGroup) {Url = tableUri};
             if (root.TryGetValue("@id", out t))
             {
-                table.Id = ParseId(t);
+                table.Id = ParseLinkProperty(t, "@id");
             }
             if (root.TryGetValue("tableSchema", out t))
             {
@@ -168,17 +166,17 @@ namespace DataDock.CsvWeb.Parsing
             return table;
         }
 
-        private Uri ParseId(JToken idToken)
+        private Uri ParseLinkProperty(JToken token, string propertyName)
         {
-            if (idToken.Type != JTokenType.String)
+            if (token.Type != JTokenType.String)
             {
-                Warn(idToken, "Value of @id property must be a string");
+                Warn(token, $"Value of property '{propertyName}' must be a string");
                 return ResolveUri(string.Empty);
             }
-            var id = (idToken as JValue)?.Value<string>();
+            var id = (token as JValue)?.Value<string>();
             if (id == null)
             {
-                Warn(idToken, "Value of @id property must be a string");
+                Warn(token, $"Value of property '{propertyName}' must be a string");
                 return ResolveUri(string.Empty);
             }
             return ResolveUri(id);
