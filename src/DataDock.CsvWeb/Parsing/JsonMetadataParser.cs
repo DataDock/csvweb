@@ -114,9 +114,7 @@ namespace DataDock.CsvWeb.Parsing
 
             if (root.TryGetValue("@id", out t))
             {
-                var id = (t as JValue)?.Value<string>();
-                if (id == null) throw new MetadataParseException("The value of the @id property must be a string");
-                tableGroup.Id = ResolveUri(id);
+                tableGroup.Id = ParseId(t);
             }
 
             ParseInheritedProperties(root, tableGroup);
@@ -139,9 +137,7 @@ namespace DataDock.CsvWeb.Parsing
             var table = new Table(tableGroup) {Url = tableUri};
             if (root.TryGetValue("@id", out t))
             {
-                var id = (t as JValue)?.Value<string>();
-                if (id == null) throw new MetadataParseException("The value of the @id property must be a string");
-                table.Id = ResolveUri(id);
+                table.Id = ParseId(t);
             }
             if (root.TryGetValue("tableSchema", out t))
             {
@@ -170,6 +166,22 @@ namespace DataDock.CsvWeb.Parsing
             ParseCommonProperties(root, table);
             table.Notes = ParseNotes(root);
             return table;
+        }
+
+        private Uri ParseId(JToken idToken)
+        {
+            if (idToken.Type != JTokenType.String)
+            {
+                Warn(idToken, "Value of @id property must be a string");
+                return ResolveUri(string.Empty);
+            }
+            var id = (idToken as JValue)?.Value<string>();
+            if (id == null)
+            {
+                Warn(idToken, "Value of @id property must be a string");
+                return ResolveUri(string.Empty);
+            }
+            return ResolveUri(id);
         }
 
         private Schema ParseTableSchema(Table table, JObject root)
