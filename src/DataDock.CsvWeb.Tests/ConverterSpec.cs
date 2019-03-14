@@ -51,14 +51,17 @@ namespace DataDock.CsvWeb.Tests
             new object[] {"data\\valid-table-7.json", "data\\countries.csv", "data\\valid-table-7-out.ttl" },
             new object[] {"data\\valid-table-suppressed-columns.json", "data\\countries.csv", "data\\valid-table-suppressed-columns-out.ttl" },
             new object[] {"data\\empty_column.metadata.json", "data\\empty_column.csv", "data\\empty_column.out.ttl"}, 
-            new object[] {"data\\escaping.metadata.json", "data\\escaping.csv", "data\\escaping.out.ttl"}
+            new object[] {"data\\escaping.metadata.json", "data\\escaping.csv", "data\\escaping.out.ttl"},
+            new object[] {"data\\valid-table-9.json", "data\\countries.csv", "data\\valid-table-9-out.ttl" },
         };
 
         [Theory]
         [MemberData(nameof(ValidConversionData))]
-        public async void TestValidConversions(string tableMetadataPath, string csvFilePath, string expectedOutputGraphPath)
+        public async void TestValidConversions(string tableMetadataPath, string csvFilePath,
+            string expectedOutputGraphPath)
         {
-            var metadataParser = new JsonMetadataParser(new DefaultResolver(), new Uri("http://example.org/metadata.json"));
+            var metadataParser =
+                new JsonMetadataParser(new DefaultResolver(), new Uri("http://example.org/metadata.json"));
             TableGroup tableGroup;
             using (var metadataReader = File.OpenText(tableMetadataPath))
             {
@@ -68,7 +71,7 @@ namespace DataDock.CsvWeb.Tests
             tableGroup.Should().NotBeNull();
             tableGroup.Tables.Should().HaveCount(1);
             var tableMeta = tableGroup.Tables[0];
-            tableMeta.Should().NotBeNull(because:"The metadata file should parse as table metadata");
+            tableMeta.Should().NotBeNull(because: "The metadata file should parse as table metadata");
             var outputGraph = new Graph();
             var graphHandler = new GraphHandler(outputGraph);
             var resolverMock = new Mock<ITableResolver>();

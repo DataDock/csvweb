@@ -557,7 +557,10 @@ namespace DataDock.CsvWeb.Rdf
 
         private static string NormalizeLiteral(string lit, DatatypeDescription datatype, string datatypeIri)
         {
-            if (datatype.Format != null) return datatype.Format.Normalize(lit);
+            if (datatype?.Format != null)
+            {
+                return datatype.Format.Normalize(lit);
+            }
 
             // TODO: Better handling for default datatype normalization
             switch (datatypeIri)

@@ -33,6 +33,7 @@ namespace DataDock.CsvWeb.Metadata
 
         private void ValidatePattern()
         {
+            if (_pattern == null) return;
             var validChars = new List<char> {'0', '#', _decimalChar, 'E', '+', '%', '‰'};
             if (_groupChar.HasValue) validChars.Add(_groupChar.Value);
             if (_pattern.Any(c => !validChars.Contains(c)))

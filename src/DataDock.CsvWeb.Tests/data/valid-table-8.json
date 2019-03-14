@@ -10,7 +10,11 @@
         "name": "latitude",
         "datatype": {
           "base": "decimal", 
-          "format": "d.ddd",
+          "format": {
+            "decimalChar": ".",
+            "groupChar": ",",
+            "format": "##.###"
+          },
           "minInclusive": -90.0,
           "maxInclusive":  90.0 
         }
@@ -19,7 +23,7 @@
         "name": "longitude",
         "datatype": {
           "base": "decimal",
-          "format": "d.ddd",
+          "format": "#.###",
           "minExclusive": -180.0,
           "maxExclusive":  180.0 
         }

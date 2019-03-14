@@ -602,6 +602,24 @@ namespace DataDock.CsvWeb.Parsing
                     case "datetime":
                         datatype.Format = new DateTimeFormatSpecification(t.Value<string>());
                         break;
+                    case "number":
+                    case "decimal":
+                    case "double":
+                    case "float":
+                        if (t.Type == JTokenType.Object)
+                        {
+                            var formatObject = t as JObject;
+                            datatype.Format = new NumericFormatSpecification(
+                                formatObject.ContainsKey("decimalChar")?formatObject["decimalChar"].Value<string>()[0] : '.',
+                                formatObject.ContainsKey("groupChar")?formatObject["groupChar"].Value<string>()[0]:',',
+                                formatObject.ContainsKey("pattern")?formatObject["pattern"].Value<string>():null);
+                        }
+                        else
+                        {
+                            datatype.Format = new NumericFormatSpecification(t.Value<string>());
+                        }
+
+                        break;
                     default:
                         throw new NotImplementedException($"Support for format annotations on the datatype '{datatype.Base}' is not yet implemented");
                 }
