@@ -14,8 +14,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CsvHelper" Version="7.0.1" />
-    <PackageReference Include="dotNetRDF" Version="2.0.1" />
+    <None Remove="Resources\csvw.jsonld" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\csvw.jsonld" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CsvHelper" Version="7.1.1" />
+    <PackageReference Include="dotNetRDF" Version="2.1.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
   </ItemGroup>
 
 </Project>

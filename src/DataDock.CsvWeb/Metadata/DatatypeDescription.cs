@@ -22,6 +22,7 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 using System;
+using System.Collections.Generic;
 
 namespace DataDock.CsvWeb.Metadata
 {
@@ -36,5 +37,15 @@ namespace DataDock.CsvWeb.Metadata
         ///  The annotation that determines the base datatype from which this datatype is derived
         /// </summary>
         public string Base { get; set; }
+
+        /// <summary>
+        /// The annotation that defines the format of a value of this type, used when parsing a string value
+        /// </summary>
+        public IFormatSpecification Format { get; set; }
+
+        /// <summary>
+        /// Constraints derived from the constraint annotations
+        /// </summary>
+        public readonly IList<IDatatypeConstraint> Constraints = new List<IDatatypeConstraint>();
     }
 }

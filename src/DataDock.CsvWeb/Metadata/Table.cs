@@ -22,17 +22,39 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 using System;
+using Newtonsoft.Json.Linq;
 
 namespace DataDock.CsvWeb.Metadata
 {
-    public class Table : InheritedPropertyContainer
+    public class Table : InheritedPropertyContainer, ICommonPropertyContainer
     {
-        public Table() : base(null) { }
+        /// <summary>
+        /// Creates a new table in the specified parent table group
+        /// </summary>
+        /// <param name="tableGroup"></param>
+        public Table(TableGroup tableGroup) : base(tableGroup)
+        {
+            tableGroup.Tables.Add(this);
+            Dialect = tableGroup.Dialect ?? new Dialect();
+        }
 
-        // TODO: Replace with a more type-safe constructor when we add the type definition for table group
-        public Table(InheritedPropertyContainer tableGroup) :base(tableGroup) { }
-
+        /// <summary>
+        /// The table identifier as specified by the id annotation on the table
+        /// </summary>
+        public Uri Id { get; set; }
+        /// <summary>
+        /// The URL from which the table content can be loaded
+        /// </summary>
         public Uri Url { get; set; }
+
         public Schema TableSchema { get; set; }
+
+        public Dialect Dialect { get; set; }
+
+        public bool SuppressOutput { get; set; }
+
+        public JObject CommonProperties { get; } = new JObject();
+
+        public JArray Notes { get; set; }
     }
 }

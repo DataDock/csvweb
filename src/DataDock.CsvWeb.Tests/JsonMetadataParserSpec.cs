@@ -37,16 +37,14 @@ namespace DataDock.CsvWeb.Tests
         {
             get
             {
-                var ret = new List<object[]>
-                {
-                    new object[]
-                    {
-                        "data\\valid-table-1.json", null, new Table {Url = new Uri("http://example.org/countries.csv")}
-                    }
-                };
+                var ret = new List<object[]>();
+                var tg = new TableGroup();
+                var t = new Table(tg) {Url = new Uri("http://example.org/countries.csv")};
+                ret.Add(new object[]{"data\\valid-table-1.json", null, tg});
 
 
-                var t = new Table {Url = new Uri("http://example.org/countries.csv")};
+                tg = new TableGroup();
+                t = new Table(tg) {Url = new Uri("http://example.org/countries.csv")};
                 t.TableSchema = new Schema(t) {Columns = new List<ColumnDescription>()};
                 t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema) {Name = "countryCode"});
                 t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
@@ -66,11 +64,12 @@ namespace DataDock.CsvWeb.Tests
 
                 ret.Add(new object[]
                 {
-                    "data\\valid-table-2.json", null, t
+                    "data\\valid-table-2.json", null, tg
                 });
 
 
-                t = new Table { Url = new Uri("http://example.org/countries.csv") };
+                tg = new TableGroup();
+                t = new Table(tg) { Url = new Uri("http://example.org/countries.csv") };
                 t.TableSchema = new Schema(t)
                 {
                     AboutUrl = new UriTemplate("http://example.org/countries.csv/{_row}"),
@@ -92,9 +91,10 @@ namespace DataDock.CsvWeb.Tests
                     Name = "name"
                 });
 
-                ret.Add(new object[] {"data\\valid-table-3.json", null, t});
+                ret.Add(new object[] {"data\\valid-table-3.json", null, tg});
 
-                t = new Table { Url = new Uri("http://example.org/countries.csv") };
+                tg = new TableGroup();               
+                t = new Table(tg) { Url = new Uri("http://example.org/countries.csv") };
                 t.TableSchema = new Schema(t)
                 {
                     AboutUrl = new UriTemplate("http://example.org/countries/{countryCode}"),
@@ -120,7 +120,49 @@ namespace DataDock.CsvWeb.Tests
                     Name = "name"
                 });
 
-                ret.Add(new object[] {"data\\valid-table-6.json", null, t});
+                ret.Add(new object[] {"data\\valid-table-6.json", null, tg});
+
+                tg = new TableGroup();
+                t = new Table(tg) { Url = new Uri("http://example.org/countries.csv") };
+                t.TableSchema = new Schema(t)
+                {
+                    AboutUrl = new UriTemplate("http://example.org/countries/{countryCode}"),
+                    Columns = new List<ColumnDescription>()
+                };
+                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+                {
+                    Name = "cc",
+                    PropertyUrl = new UriTemplate("http://example.org/countries.csv/def/countryCode")
+                });
+                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+                {
+                    Name = "latitude",
+                    Datatype = new DatatypeDescription
+                    {
+                        Base = "decimal", Format=new NumericFormatSpecification("#.##"), 
+                        Constraints =
+                        {
+                            new ValueConstraint{ConstraintType = ValueConstraintType.Min, NumericThreshold = -90.0},
+                            new ValueConstraint{ConstraintType = ValueConstraintType.Max, NumericThreshold = 90.0}
+                        }
+                    }
+                });
+                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+                {
+                    Name = "longitude",
+                    Datatype = new DatatypeDescription { Base = "decimal", Format = new NumericFormatSpecification("#.##"),
+                        Constraints =
+                        {
+                            new ValueConstraint{ConstraintType = ValueConstraintType.MinExclusive, NumericThreshold = -180.0},
+                            new ValueConstraint{ConstraintType = ValueConstraintType.MaxExclusive, NumericThreshold = 180.0}
+                        }
+                }});
+                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+                {
+                    Name = "name"
+                });
+
+                ret.Add(new object[] { "data\\valid-table-8.json", null, tg });
                 return ret;
             }
         }
@@ -129,7 +171,7 @@ namespace DataDock.CsvWeb.Tests
         [MemberData(nameof(ValidParserTests))]
         public void TestParseOfValidMetadataJson(string jsonPath, Uri baseUri, object expectedResult)
         {
-            var metadataParser = new JsonMetadataParser(baseUri);
+            var metadataParser = new JsonMetadataParser(new DefaultResolver(), baseUri ?? new Uri("http://localhost/example.json"));
             using (var fileStream = File.OpenText(jsonPath))
             {
                 var parsed = metadataParser.Parse(fileStream);
