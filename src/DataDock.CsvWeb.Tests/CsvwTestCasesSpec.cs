@@ -8,7 +8,6 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using AngleSharp.Dom.Css;
 using DataDock.CsvWeb.Metadata;
 using DataDock.CsvWeb.Rdf;
 using FluentAssertions;
@@ -22,24 +21,27 @@ using WireMock.RequestBuilders;
 using WireMock.ResponseBuilders;
 using WireMock.Server;
 using Xunit;
+using Xunit.Abstractions;
 using Xunit.Sdk;
 
 namespace DataDock.CsvWeb.Tests
 {
     public class CsvwTestCasesSpec : IClassFixture<CsvwTestServerFixture>
     {
-        private readonly FluentMockServer _server;
+        private readonly WireMockServer _server;
         private readonly Uri _baseUri;
+        private readonly ITestOutputHelper _output;
 
-        public CsvwTestCasesSpec(CsvwTestServerFixture fixture)
+        public CsvwTestCasesSpec(CsvwTestServerFixture fixture, ITestOutputHelper output)
         {
+            _output = output;
             _server = fixture.Server;
             _baseUri = fixture.BaseUri;
         }
 
         [Theory]
         [CsvwtManifest("data\\test-suite\\manifest-rdf.ttl")]
-        public async void CsvwRdfTests(string testId, CsvwTestDescription test)
+        public async void CsvwRdfTests(CsvwTestDescription test)
         {
             SetupTest(test);
             await RunTestAsync(test);
@@ -52,16 +54,16 @@ namespace DataDock.CsvWeb.Tests
             var manifestGraph = new Graph();
             manifestGraph.LoadFromFile("data\\test-suite\\manifest-rdf.ttl");
             var testReader = new CsvwtManifestReader(manifestGraph);
-            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test103"));
+            var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test104"));
             var sw = new Stopwatch();
             sw.Start();
             SetupTest(test);
             sw.Stop();
-            Console.WriteLine($"Setup took {sw.ElapsedMilliseconds} ms");
+            _output.WriteLine($"Setup took {sw.ElapsedMilliseconds} ms");
             sw.Restart();
             await RunTestAsync(test);
             sw.Stop();
-            Console.WriteLine($"Test run took {sw.ElapsedMilliseconds} ms");
+            _output.WriteLine($"Test run took {sw.ElapsedMilliseconds} ms");
         }
         /* */
 
@@ -267,12 +269,12 @@ namespace DataDock.CsvWeb.Tests
 
     public class CsvwTestServerFixture : IDisposable
     {
-        internal FluentMockServer Server { get; private set; }
+        internal WireMockServer Server { get; private set; }
         internal Uri BaseUri { get; private set; }
 
         public CsvwTestServerFixture()
         {
-            Server = FluentMockServer.Start();
+            Server = WireMockServer.Start();
             BaseUri = new Uri("http://localhost:" + Server.Ports[0]);
             Server.Given(Request.Create().WithPath("/manifest-rdf.ttl"))
                 .RespondWith(Response.Create().WithBodyFromFile("data\\test-suite\\manifest-rdf.ttl")
@@ -445,7 +447,6 @@ namespace DataDock.CsvWeb.Tests
     public class CsvwtManifestAttribute : DataAttribute
     {
         private readonly IGraph _manifestGraph;
-        private readonly List<INode> _testNodes;
 
         public CsvwtManifestAttribute(string manifestFilePath, params string[] skipTests)
         {
@@ -463,7 +464,6 @@ namespace DataDock.CsvWeb.Tests
                 var entriesRoot =
                     _manifestGraph.GetTriplesWithSubjectPredicate(manifestNode, _manifestGraph.CreateUriNode("mf:entries"))
                         .Select(t => t.Object).First();
-                _testNodes = _manifestGraph.GetListItems(entriesRoot).ToList();
             }
         }
 
@@ -473,7 +473,7 @@ namespace DataDock.CsvWeb.Tests
             var manifestReader = new CsvwtManifestReader(_manifestGraph);
             foreach (var test in manifestReader.ReadAllTests())
             {
-                yield return new object[] {test.Id, test};
+                yield return new object[] {test};
             }
         }
     }
