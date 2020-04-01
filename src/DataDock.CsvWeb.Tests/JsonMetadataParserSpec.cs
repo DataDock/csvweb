@@ -33,150 +33,205 @@ namespace DataDock.CsvWeb.Tests
 {
     public class JsonMetadataParserSpec
     {
-        public static IEnumerable<object[]> ValidParserTests
+        private static TableGroup ParseMetadata(string jsonPath, Uri baseUri)
         {
-            get
+            var metadataParser = new JsonMetadataParser(new DefaultResolver(), baseUri ?? new Uri("http://localhost/example.json"));
+            using var fileStream = File.OpenText(jsonPath);
+            return metadataParser.Parse(fileStream);
+        }
+
+        private static TableGroup ParseMetadataFromJson(string json, Uri baseUri)
+        {
+            var metadataParser = new JsonMetadataParser(new DefaultResolver(), baseUri ?? new Uri("http://localhost/example.json"));
+            using var reader = new StringReader(json);
+            return metadataParser.Parse(reader);
+        }
+
+        [Fact]
+        public void TestMinimalMetadata()
+        {
+            var tg = new TableGroup();
+            var _ = new Table(tg) { Url = new Uri("http://example.org/countries.csv") };
+            var actual = ParseMetadata("data\\valid-table-1.json", null);
+            actual.Should().BeEquivalentTo(tg, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
+        }
+
+        [Fact]
+        public void TestTableWithVirtualColumn()
+        {
+            var json = @"{ 
+                'url': 'http://example.org/countries.csv',
+                'tableSchema': {
+                    'columns': [
+                        {
+                            'virtual': true,
+                            'aboutUrl': 'http://example.org/row/{_row}',
+                            'propertyUrl': 'http://example.org/p',
+                            'valueUrl': 'http://example.org/o'
+                        }
+                    ]
+                }
+            }";
+
+            var expected = new TableGroup();
+            var t = new Table(expected)
             {
-                var ret = new List<object[]>();
-                var tg = new TableGroup();
-                var t = new Table(tg) {Url = new Uri("http://example.org/countries.csv")};
-                ret.Add(new object[]{"data\\valid-table-1.json", null, tg});
+                Url = new Uri("http://example.org/countries.csv")
+            };
+            t.TableSchema = new Schema(t) {Columns = new List<ColumnDescription>()};
+            var c = new ColumnDescription(t.TableSchema);
+            t.TableSchema.Columns.Add(c);
+            c.Name = "_col.1";
+            c.Virtual = true;
+            c.AboutUrl = new UriTemplate("http://example.org/row/{_row}");
+            c.PropertyUrl = new UriTemplate("http://example.org/p");
+            c.ValueUrl = new UriTemplate("http://example.org/o");
 
+            var actual = ParseMetadataFromJson(json, null);
+            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
 
-                tg = new TableGroup();
-                t = new Table(tg) {Url = new Uri("http://example.org/countries.csv")};
-                t.TableSchema = new Schema(t) {Columns = new List<ColumnDescription>()};
-                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema) {Name = "countryCode"});
-                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
-                {
-                    Name = "latitude",
-                    Datatype = new DatatypeDescription {Base = "decimal"}
-                });
-                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
-                {
-                    Name = "longitude",
-                    Datatype = new DatatypeDescription {Base = "decimal"}
-                });
-                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
-                {
-                    Name = "name"
-                });
+        }
 
-                ret.Add(new object[]
-                {
-                    "data\\valid-table-2.json", null, tg
-                });
+        [Fact]
+        public void TestLiteralColumnsWithNamesAndDatatypes()
+        {
+            var expected = new TableGroup();
+            var t = new Table(expected) { Url = new Uri("http://example.org/countries.csv") };
+            t.TableSchema = new Schema(t) { Columns = new List<ColumnDescription>() };
+            t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema) { Name = "countryCode" });
+            t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+            {
+                Name = "latitude",
+                Datatype = new DatatypeDescription { Base = "decimal" }
+            });
+            t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+            {
+                Name = "longitude",
+                Datatype = new DatatypeDescription { Base = "decimal" }
+            });
+            t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+            {
+                Name = "name"
+            });
 
+            var actual = ParseMetadata("data\\valid-table-2.json", null);
+            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
+        }
 
-                tg = new TableGroup();
-                t = new Table(tg) { Url = new Uri("http://example.org/countries.csv") };
-                t.TableSchema = new Schema(t)
-                {
-                    AboutUrl = new UriTemplate("http://example.org/countries.csv/{_row}"),
-                    Columns = new List<ColumnDescription>()
-                };
-                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema) { Name = "countryCode" });
-                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
-                {
-                    Name = "latitude",
-                    Datatype = new DatatypeDescription { Base = "decimal" }
-                });
-                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
-                {
-                    Name = "longitude",
-                    Datatype = new DatatypeDescription { Base = "decimal" }
-                });
-                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
-                {
-                    Name = "name"
-                });
+        [Fact]
+        public void TestTableWithAboutUrl()
+        {
+            var expected = new TableGroup();
+            var t = new Table(expected) { Url = new Uri("http://example.org/countries.csv") };
+            t.TableSchema = new Schema(t)
+            {
+                AboutUrl = new UriTemplate("http://example.org/countries.csv/{_row}"),
+                Columns = new List<ColumnDescription>()
+            };
+            t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema) { Name = "countryCode" });
+            t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+            {
+                Name = "latitude",
+                Datatype = new DatatypeDescription { Base = "decimal" }
+            });
+            t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+            {
+                Name = "longitude",
+                Datatype = new DatatypeDescription { Base = "decimal" }
+            });
+            t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+            {
+                Name = "name"
+            });
 
-                ret.Add(new object[] {"data\\valid-table-3.json", null, tg});
+            var actual = ParseMetadata("data\\valid-table-3.json", null);
+            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
+        }
 
-                tg = new TableGroup();               
-                t = new Table(tg) { Url = new Uri("http://example.org/countries.csv") };
-                t.TableSchema = new Schema(t)
-                {
-                    AboutUrl = new UriTemplate("http://example.org/countries/{countryCode}"),
-                    Columns = new List<ColumnDescription>()
-                };
-                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
-                {
-                    Name = "countryCode",
-                    PropertyUrl = new UriTemplate("http://example.org/countries.csv/def/countryCode")
-                });
-                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
-                {
-                    Name = "latitude",
-                    Datatype = new DatatypeDescription { Base = "decimal" }
-                });
-                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
-                {
-                    Name = "longitude",
-                    Datatype = new DatatypeDescription { Base = "decimal" }
-                });
-                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
-                {
-                    Name = "name"
-                });
+        [Fact]
+        public void TestColumnWithPropertyUrl()
+        {
+            var expected = new TableGroup();
+            var t  = new Table(expected) { Url = new Uri("http://example.org/countries.csv") };
+            t.TableSchema = new Schema(t)
+            {
+                AboutUrl = new UriTemplate("http://example.org/countries/{countryCode}"),
+                Columns = new List<ColumnDescription>()
+            };
+            t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+            {
+                Name = "countryCode",
+                PropertyUrl = new UriTemplate("http://example.org/countries.csv/def/countryCode")
+            });
+            t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+            {
+                Name = "latitude",
+                Datatype = new DatatypeDescription { Base = "decimal" }
+            });
+            t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+            {
+                Name = "longitude",
+                Datatype = new DatatypeDescription { Base = "decimal" }
+            });
+            t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+            {
+                Name = "name"
+            });
 
-                ret.Add(new object[] {"data\\valid-table-6.json", null, tg});
+            var actual = ParseMetadata("data\\valid-table-6.json", null);
+            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
+        }
 
-                tg = new TableGroup();
-                t = new Table(tg) { Url = new Uri("http://example.org/countries.csv") };
-                t.TableSchema = new Schema(t)
+        [Fact]
+        public void TestColumnWithValueConstraints()
+        {
+            var expected = new TableGroup();
+            var t = new Table(expected) { Url = new Uri("http://example.org/countries.csv") };
+            t.TableSchema = new Schema(t)
+            {
+                AboutUrl = new UriTemplate("http://example.org/countries/{countryCode}"),
+                Columns = new List<ColumnDescription>()
+            };
+            t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+            {
+                Name = "cc",
+                PropertyUrl = new UriTemplate("http://example.org/countries.csv/def/countryCode")
+            });
+            t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+            {
+                Name = "latitude",
+                Datatype = new DatatypeDescription
                 {
-                    AboutUrl = new UriTemplate("http://example.org/countries/{countryCode}"),
-                    Columns = new List<ColumnDescription>()
-                };
-                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
-                {
-                    Name = "cc",
-                    PropertyUrl = new UriTemplate("http://example.org/countries.csv/def/countryCode")
-                });
-                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
-                {
-                    Name = "latitude",
-                    Datatype = new DatatypeDescription
-                    {
-                        Base = "decimal", Format=new NumericFormatSpecification("#.##"), 
-                        Constraints =
+                    Base = "decimal",
+                    Format = new NumericFormatSpecification("#.##"),
+                    Constraints =
                         {
                             new ValueConstraint{ConstraintType = ValueConstraintType.Min, NumericThreshold = -90.0},
                             new ValueConstraint{ConstraintType = ValueConstraintType.Max, NumericThreshold = 90.0}
                         }
-                    }
-                });
-                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+                }
+            });
+            t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
+            {
+                Name = "longitude",
+                Datatype = new DatatypeDescription
                 {
-                    Name = "longitude",
-                    Datatype = new DatatypeDescription { Base = "decimal", Format = new NumericFormatSpecification("#.##"),
-                        Constraints =
+                    Base = "decimal",
+                    Format = new NumericFormatSpecification("#.##"),
+                    Constraints =
                         {
                             new ValueConstraint{ConstraintType = ValueConstraintType.MinExclusive, NumericThreshold = -180.0},
                             new ValueConstraint{ConstraintType = ValueConstraintType.MaxExclusive, NumericThreshold = 180.0}
                         }
-                }});
-                t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
-                {
-                    Name = "name"
-                });
-
-                ret.Add(new object[] { "data\\valid-table-8.json", null, tg });
-                return ret;
-            }
-        }
-
-        [Theory]
-        [MemberData(nameof(ValidParserTests))]
-        public void TestParseOfValidMetadataJson(string jsonPath, Uri baseUri, object expectedResult)
-        {
-            var metadataParser = new JsonMetadataParser(new DefaultResolver(), baseUri ?? new Uri("http://localhost/example.json"));
-            using (var fileStream = File.OpenText(jsonPath))
+                }
+            });
+            t.TableSchema.Columns.Add(new ColumnDescription(t.TableSchema)
             {
-                var parsed = metadataParser.Parse(fileStream);
-                parsed.Should().BeEquivalentTo(expectedResult, options=> options.Excluding(o=>o.SelectedMemberPath.EndsWith(".Parent")));
-            }
+                Name = "name"
+            });
+
+            var actual = ParseMetadata("data\\valid-table-8.json", null);
+            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
         }
     }
 }
