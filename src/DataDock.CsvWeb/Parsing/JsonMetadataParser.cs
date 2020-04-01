@@ -53,7 +53,7 @@ namespace DataDock.CsvWeb.Parsing
 
         public TableGroup Parse(TextReader textReader)
         {
-            var jsonParser = new Newtonsoft.Json.JsonSerializer {DateParseHandling = DateParseHandling.None};
+            var jsonParser = new JsonSerializer();
             var rootObject = jsonParser.Deserialize(new JsonTextReader(textReader)) as JObject;
             if (rootObject == null)
             {
@@ -229,11 +229,11 @@ namespace DataDock.CsvWeb.Parsing
             if (root.TryGetValue("default", out t))
             {
                 if (!(t is JValue defaultValue) ||
-                    defaultValue.Type != JTokenType.String)
+                    defaultValue.Type != JTokenType.String && defaultValue.Type != JTokenType.Date)
                 {
                     throw new MetadataParseException("The value of the 'default' property must be a string");
                 }
-                columnDescription.Default = defaultValue.Value<string>();
+                columnDescription.Default = defaultValue.Type == JTokenType.Date ? JsonConvert.SerializeObject(defaultValue).Trim('"') : defaultValue.Value<string>();
             }
 
             if (root.TryGetValue("virtual", out t))
