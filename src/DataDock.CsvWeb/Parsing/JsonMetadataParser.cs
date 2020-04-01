@@ -53,7 +53,7 @@ namespace DataDock.CsvWeb.Parsing
 
         public TableGroup Parse(TextReader textReader)
         {
-            var jsonParser = new Newtonsoft.Json.JsonSerializer();
+            var jsonParser = new Newtonsoft.Json.JsonSerializer {DateParseHandling = DateParseHandling.None};
             var rootObject = jsonParser.Deserialize(new JsonTextReader(textReader)) as JObject;
             if (rootObject == null)
             {
@@ -210,15 +210,13 @@ namespace DataDock.CsvWeb.Parsing
             JToken t;
             if (root.TryGetValue("name", out t))
             {
-                var nameValue = t as JValue;
-                if (nameValue == null || nameValue.Type != JTokenType.String) throw new MetadataParseException("The value of the 'name' property must be a string");
+                if (!(t is JValue nameValue) || nameValue.Type != JTokenType.String) throw new MetadataParseException("The value of the 'name' property must be a string");
                 ValidateColumnName(nameValue.Value<string>());
                 columnDescription.Name = nameValue.Value<string>();
             }
             if (root.TryGetValue("suppressOutput", out t))
             {
-                var suppress = t as JValue;
-                if (suppress == null || suppress.Type != JTokenType.Boolean)
+                if (!(t is JValue suppress) || suppress.Type != JTokenType.Boolean)
                     throw new MetadataParseException("The value of the 'suppressOutput' property must be a boolean");
                 columnDescription.SuppressOutput = suppress.Value<bool>();
             }
@@ -230,8 +228,11 @@ namespace DataDock.CsvWeb.Parsing
 
             if (root.TryGetValue("default", out t))
             {
-                var defaultValue = t as JValue;
-                if (defaultValue == null || defaultValue.Type != JTokenType.String) throw new MetadataParseException("The value of the 'default' property must be a string");
+                if (!(t is JValue defaultValue) ||
+                    defaultValue.Type != JTokenType.String)
+                {
+                    throw new MetadataParseException("The value of the 'default' property must be a string");
+                }
                 columnDescription.Default = defaultValue.Value<string>();
             }
 

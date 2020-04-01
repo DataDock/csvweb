@@ -93,6 +93,78 @@ namespace DataDock.CsvWeb.Tests
         }
 
         [Fact]
+        public void DefaultCanLookLikeADate()
+        {
+            var json = @"{ 
+                'url': 'http://example.org/countries.csv',
+                'tableSchema': {
+                    'columns': [
+                        {
+                            'virtual': true,
+                            'aboutUrl': 'http://example.org/row/{_row}',
+                            'propertyUrl': 'http://example.org/p',
+                            'default': '2020-04-01'
+                        }
+                    ]
+                }
+            }";
+
+            var expected = new TableGroup();
+            var t = new Table(expected)
+            {
+                Url = new Uri("http://example.org/countries.csv")
+            };
+            t.TableSchema = new Schema(t) { Columns = new List<ColumnDescription>() };
+            var c = new ColumnDescription(t.TableSchema);
+            t.TableSchema.Columns.Add(c);
+            c.Name = "_col.1";
+            c.Virtual = true;
+            c.AboutUrl = new UriTemplate("http://example.org/row/{_row}");
+            c.PropertyUrl = new UriTemplate("http://example.org/p");
+            c.Default = "2020-04-01";
+
+            var actual = ParseMetadataFromJson(json, null);
+            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
+
+        }
+
+        [Fact]
+        public void DefaultCanLookLikeADateTime()
+        {
+            var json = @"{ 
+                'url': 'http://example.org/countries.csv',
+                'tableSchema': {
+                    'columns': [
+                        {
+                            'virtual': true,
+                            'aboutUrl': 'http://example.org/row/{_row}',
+                            'propertyUrl': 'http://example.org/p',
+                            'default': '2020-04-01T16:30:00Z'
+                        }
+                    ]
+                }
+            }";
+
+            var expected = new TableGroup();
+            var t = new Table(expected)
+            {
+                Url = new Uri("http://example.org/countries.csv")
+            };
+            t.TableSchema = new Schema(t) { Columns = new List<ColumnDescription>() };
+            var c = new ColumnDescription(t.TableSchema);
+            t.TableSchema.Columns.Add(c);
+            c.Name = "_col.1";
+            c.Virtual = true;
+            c.AboutUrl = new UriTemplate("http://example.org/row/{_row}");
+            c.PropertyUrl = new UriTemplate("http://example.org/p");
+            c.Default = "2020-04-01T16:30:00Z";
+
+            var actual = ParseMetadataFromJson(json, null);
+            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
+
+        }
+
+        [Fact]
         public void TestLiteralColumnsWithNamesAndDatatypes()
         {
             var expected = new TableGroup();
