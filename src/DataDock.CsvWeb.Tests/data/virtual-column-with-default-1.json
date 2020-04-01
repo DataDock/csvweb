@@ -1,0 +1,28 @@
+{
+  "url": "http://example.org/countries.csv",
+  "tableSchema": {
+    "columns": [
+      {
+        "name": "cc",
+        "propertyUrl": "http://example.org/countries.csv/def/countryCode"
+      },
+      {
+        "name": "latitude",
+        "datatype": "decimal"
+      },
+      {
+        "name": "longitude",
+        "datatype": "decimal"
+      },
+      {
+        "name": "name"
+      },
+      {
+        "virtual": true,
+        "default": "foo",
+        "propertyUrl":  "http://example.org/countries.csv/def/test"
+      }
+    ],
+    "aboutUrl": "http://example.org/countries/{cc}"
+  }
+}

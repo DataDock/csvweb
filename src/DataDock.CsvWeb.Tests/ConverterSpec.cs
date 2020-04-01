@@ -53,6 +53,7 @@ namespace DataDock.CsvWeb.Tests
             new object[] {"data\\empty_column.metadata.json", "data\\empty_column.csv", "data\\empty_column.out.ttl"}, 
             new object[] {"data\\escaping.metadata.json", "data\\escaping.csv", "data\\escaping.out.ttl"},
             new object[] {"data\\valid-table-9.json", "data\\countries.csv", "data\\valid-table-9-out.ttl" },
+            new object[] {"data\\virtual-column-with-default-1.json", "data\\countries.csv", "data\\virtual-column-with-default-1-out.ttl"},
         };
 
         [Theory]

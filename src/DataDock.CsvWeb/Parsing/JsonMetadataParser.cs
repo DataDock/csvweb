@@ -235,6 +235,15 @@ namespace DataDock.CsvWeb.Parsing
                 columnDescription.Default = defaultValue.Value<string>();
             }
 
+            if (root.TryGetValue("virtual", out t))
+            {
+                if (!(t is JValue virtualValue) || virtualValue.Type != JTokenType.Boolean)
+                {
+                    throw new MetadataParseException("The value of the 'virtual' property must be a boolean");
+                }
+                columnDescription.Virtual = virtualValue.Value<bool>();
+            }
+
             if (columnDescription.Name == null && columnDescription.Titles != null)
             {
                 columnDescription.Name = columnDescription.Titles.Where(x => x.LanguageTag.Equals(_defaultLanguage))
