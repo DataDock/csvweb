@@ -8,6 +8,9 @@
 	  <Description>A library for converting CSV to RDF following the CSV On The Web recommendation</Description>
 	  <PackageId>DataDock.CsvWeb</PackageId>
 	  <Version>0.0.0</Version>
+	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
+	  <PackageLicenseFile>LICENSE</PackageLicenseFile>
+	  <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 	  <PackageTags>CSV, RDF, CSVWeb</PackageTags>
 	  <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
