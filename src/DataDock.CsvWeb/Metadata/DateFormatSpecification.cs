@@ -1,27 +1,29 @@
 ﻿using System;
 using System.Globalization;
-using VDS.RDF.Parsing;
+using NodaTime.Text;
 
 namespace DataDock.CsvWeb.Metadata
 {
     public class DateFormatSpecification : IFormatSpecification
     {
-        private readonly string _format;
+        private readonly LocalDatePattern _pattern;
+        
         public DateFormatSpecification(string format)
         {
-            _format = format ?? throw new ArgumentNullException(nameof(format));
+            if (format == null) throw new ArgumentNullException(nameof(format));
+            _pattern = LocalDatePattern.CreateWithInvariantCulture(format);
         }
 
 
         public bool IsValid(string literal)
         {
-            return DateTime.TryParseExact(literal, _format, CultureInfo.InvariantCulture, DateTimeStyles.None,
-                out var result);
+            return _pattern.Parse(literal).Success;
         }
 
         public string Normalize(string literal)
         {
-            return DateTime.ParseExact(literal, _format, CultureInfo.InvariantCulture).ToString(XmlSpecsHelper.XmlSchemaDateFormat);
+            var parseResult = _pattern.Parse(literal);
+            return parseResult.GetValueOrThrow().ToString("R", CultureInfo.InvariantCulture);
         }
     }
 }

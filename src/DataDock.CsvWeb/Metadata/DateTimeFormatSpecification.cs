@@ -1,34 +1,38 @@
 ﻿using System;
-using System.Globalization;
-using VDS.RDF.Parsing;
+using NodaTime.Text;
 
 namespace DataDock.CsvWeb.Metadata
 {
     public class DateTimeFormatSpecification : IFormatSpecification
     {
-        private readonly string _format;
+        private readonly bool _hasOffset;
+        private readonly LocalDateTimePattern _localPattern;
+        private readonly OffsetDateTimePattern _offsetPattern;
+
         public DateTimeFormatSpecification(string format)
         {
-            _format = format ?? throw new ArgumentNullException(nameof(format));
+            if (format == null) throw new ArgumentNullException(nameof(format));
+            _hasOffset = format.Contains("x") || format.Contains("X");
+            if (_hasOffset)
+            {
+                _offsetPattern = OffsetDateTimePattern.CreateWithInvariantCulture(TimeFormatSpecification.GetNodaTimePattern(format));
+            }
+            else
+            {
+                _localPattern = LocalDateTimePattern.CreateWithInvariantCulture(TimeFormatSpecification.GetNodaTimePattern(format));
+            }
         }
-
 
         public bool IsValid(string literal)
         {
-            return DateTime.TryParseExact(literal, _format, CultureInfo.InvariantCulture, DateTimeStyles.None,
-                out var result);
+            return _hasOffset ? _offsetPattern.Parse(literal).Success : _localPattern.Parse(literal).Success;
         }
 
         public string Normalize(string literal)
         {
-            var formattedString = DateTime.ParseExact(literal, _format, CultureInfo.InvariantCulture)
-                .ToString(XmlSpecsHelper.XmlSchemaDateTimeFormat);
-            if (formattedString.EndsWith(".000000"))
-            {
-                formattedString = formattedString.Substring(0, formattedString.Length - 7);
-            }
-
-            return formattedString;
+            return _hasOffset
+                ? OffsetDateTimePattern.ExtendedIso.Format(_offsetPattern.Parse(literal).GetValueOrThrow())
+                : LocalDateTimePattern.ExtendedIso.Format(_localPattern.Parse(literal).GetValueOrThrow());
         }
     }
 }

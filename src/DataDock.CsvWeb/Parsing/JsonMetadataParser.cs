@@ -619,6 +619,9 @@ namespace DataDock.CsvWeb.Parsing
                     case "date":
                         datatype.Format = new DateFormatSpecification(t.Value<string>());
                         break;
+                    case "time":
+                        datatype.Format = new TimeFormatSpecification(t.Value<string>());
+                        break;
                     case "datetime":
                         datatype.Format = new DateTimeFormatSpecification(t.Value<string>());
                         break;
