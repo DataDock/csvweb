@@ -52,7 +52,7 @@ namespace DataDock.CsvWeb.Tests
         {
             var tg = new TableGroup();
             var _ = new Table(tg) { Url = new Uri("http://example.org/countries.csv") };
-            var actual = ParseMetadata("data\\valid-table-1.json", null);
+            var actual = ParseMetadata(Path.Combine("data","valid-table-1.json"), null);
             actual.Should().BeEquivalentTo(tg, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
         }
 
@@ -186,7 +186,7 @@ namespace DataDock.CsvWeb.Tests
                 Name = "name"
             });
 
-            var actual = ParseMetadata("data\\valid-table-2.json", null);
+            var actual = ParseMetadata(Path.Combine("data", "valid-table-2.json"), null);
             actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
         }
 
@@ -216,7 +216,7 @@ namespace DataDock.CsvWeb.Tests
                 Name = "name"
             });
 
-            var actual = ParseMetadata("data\\valid-table-3.json", null);
+            var actual = ParseMetadata(Path.Combine("data", "valid-table-3.json"), null);
             actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
         }
 
@@ -250,7 +250,7 @@ namespace DataDock.CsvWeb.Tests
                 Name = "name"
             });
 
-            var actual = ParseMetadata("data\\valid-table-6.json", null);
+            var actual = ParseMetadata(Path.Combine("data", "valid-table-6.json"), null);
             actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
         }
 
@@ -302,7 +302,7 @@ namespace DataDock.CsvWeb.Tests
                 Name = "name"
             });
 
-            var actual = ParseMetadata("data\\valid-table-8.json", null);
+            var actual = ParseMetadata(Path.Combine("data", "valid-table-8.json"), null);
             actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
         }
     }
