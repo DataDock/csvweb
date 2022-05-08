@@ -52,7 +52,7 @@ namespace DataDock.CsvWeb.Tests
         public async void RunSingleTest()
         {
             var manifestGraph = new Graph();
-            manifestGraph.LoadFromFile("data\\test-suite\\manifest-rdf.ttl");
+            manifestGraph.LoadFromFile(Path.Combine("data","test-suite", "manifest-rdf.ttl"));
             var testReader = new CsvwtManifestReader(manifestGraph);
             var test = testReader.ReadTest(new Uri(manifestGraph.BaseUri, "manifest-rdf#test104"));
             var sw = new Stopwatch();
@@ -275,7 +275,7 @@ namespace DataDock.CsvWeb.Tests
             Server = WireMockServer.Start();
             BaseUri = new Uri("http://localhost:" + Server.Ports[0]);
             Server.Given(Request.Create().WithPath("/manifest-rdf.ttl"))
-                .RespondWith(Response.Create().WithBodyFromFile("data\\test-suite\\manifest-rdf.ttl")
+                .RespondWith(Response.Create().WithBodyFromFile(Path.Combine("data","test-suite", "manifest-rdf.ttl"))
                     .WithHeader("Content-Type", "application/turtle")
                     .WithStatusCode(200));
         }

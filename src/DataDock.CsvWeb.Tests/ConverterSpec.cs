@@ -42,18 +42,18 @@ namespace DataDock.CsvWeb.Tests
     {
         public static IEnumerable<object[]> ValidConversionData = new[]
         {
-            new object[] {"data\\valid-table-1.json", "data\\countries.csv", "data\\valid-table-1-out.ttl" },
-            new object[] {"data\\valid-table-2.json", "data\\countries.csv", "data\\valid-table-2-out.ttl" },
-            new object[] {"data\\valid-table-3.json", "data\\countries.csv", "data\\valid-table-3-out.ttl" },
-            new object[] {"data\\valid-table-4.json", "data\\countries.csv", "data\\valid-table-4-out.ttl" },
-            new object[] {"data\\valid-table-5.json", "data\\countries.csv", "data\\valid-table-5-out.ttl" },
-            new object[] {"data\\valid-table-6.json", "data\\countries.csv", "data\\valid-table-6-out.ttl" },
-            new object[] {"data\\valid-table-7.json", "data\\countries.csv", "data\\valid-table-7-out.ttl" },
-            new object[] {"data\\valid-table-suppressed-columns.json", "data\\countries.csv", "data\\valid-table-suppressed-columns-out.ttl" },
-            new object[] {"data\\empty_column.metadata.json", "data\\empty_column.csv", "data\\empty_column.out.ttl"}, 
-            new object[] {"data\\escaping.metadata.json", "data\\escaping.csv", "data\\escaping.out.ttl"},
-            new object[] {"data\\valid-table-9.json", "data\\countries.csv", "data\\valid-table-9-out.ttl" },
-            new object[] {"data\\virtual-column-with-default-1.json", "data\\countries.csv", "data\\virtual-column-with-default-1-out.ttl"},
+            new object[] {"valid-table-1.json", "countries.csv", "valid-table-1-out.ttl" },
+            new object[] {"valid-table-2.json", "countries.csv", "valid-table-2-out.ttl" },
+            new object[] {"valid-table-3.json", "countries.csv", "valid-table-3-out.ttl" },
+            new object[] {"valid-table-4.json", "countries.csv", "valid-table-4-out.ttl" },
+            new object[] {"valid-table-5.json", "countries.csv", "valid-table-5-out.ttl" },
+            new object[] {"valid-table-6.json", "countries.csv", "valid-table-6-out.ttl" },
+            new object[] {"valid-table-7.json", "countries.csv", "valid-table-7-out.ttl" },
+            new object[] {"valid-table-suppressed-columns.json", "countries.csv", "valid-table-suppressed-columns-out.ttl" },
+            new object[] {"empty_column.metadata.json", "empty_column.csv", "empty_column.out.ttl"}, 
+            new object[] {"escaping.metadata.json", "escaping.csv", "escaping.out.ttl"},
+            new object[] {"valid-table-9.json", "countries.csv", "valid-table-9-out.ttl" },
+            new object[] {"virtual-column-with-default-1.json", "countries.csv", "virtual-column-with-default-1-out.ttl"},
         };
 
         [Theory]
@@ -63,6 +63,9 @@ namespace DataDock.CsvWeb.Tests
         {
             var metadataParser =
                 new JsonMetadataParser(new DefaultResolver(), new Uri("http://example.org/metadata.json"));
+            tableMetadataPath = Path.Combine("data", tableMetadataPath);
+            csvFilePath = Path.Combine("data", csvFilePath);
+            expectedOutputGraphPath = Path.Combine("data", expectedOutputGraphPath);
             TableGroup tableGroup;
             using (var metadataReader = File.OpenText(tableMetadataPath))
             {
