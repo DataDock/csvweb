@@ -1,0 +1,45 @@
+{
+  "@context": "http://www.w3.org/ns/csvw",
+  "url": "http://datadock.io/kal/data_dev/id/dataset/dateTime",
+  "dc:title": "dateTime",
+  "dc:description": "",
+  "dc:license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "dcat:keyword": [],
+  "tableSchema": {
+    "aboutUrl": "http://datadock.io/kal/data_dev/id/resource/dateTime/row_{_row}",
+    "columns": [
+      {
+        "name": "thing",
+        "titles": [
+          "Thing"
+        ],
+        "datatype": "string",
+        "propertyUrl": "http://datadock.io/kal/data_dev/id/definition/thing"
+      },
+      {
+        "name": "isoDateTime",
+        "titles": [
+          "ISODateTime"
+        ],
+        "datatype": { "base": "datetime", "format": "yyyy-M-dTH:m:sXXX" },
+        "propertyUrl": "http://datadock.io/kal/data_dev/id/definition/isoDateTime",
+      },
+      {
+        "name": "usDate",
+        "titles": [
+          "USDate"
+        ],
+        "datatype": { "base": "date", "format": "M/d/yyyy" },
+        "propertyUrl": "http://datadock.io/kal/data_dev/id/definition/usDate",
+      },
+      {
+        "name": "ukDate",
+        "titles": [
+          "UKDate"
+        ],
+        "datatype": { "base": "date", "format": "d/M/yyyy" },
+        "propertyUrl": "http://datadock.io/kal/data_dev/id/definition/ukDate",
+      }
+    ]
+  }
+}

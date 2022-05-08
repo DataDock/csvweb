@@ -1,0 +1,10 @@
+<http://datadock.io/kal/data_dev/id/resource/dateTime/row_1> 
+  <http://datadock.io/kal/data_dev/id/definition/thing> "A"^^<http://www.w3.org/2001/XMLSchema#string>;
+  <http://datadock.io/kal/data_dev/id/definition/isoDateTime> "2019-03-16T15:03:23Z"^^<http://www.w3.org/2001/XMLSchema#dateTime>;
+  <http://datadock.io/kal/data_dev/id/definition/usDate> "2019-03-16"^^<http://www.w3.org/2001/XMLSchema#date>;
+  <http://datadock.io/kal/data_dev/id/definition/ukDate> "2019-03-16"^^<http://www.w3.org/2001/XMLSchema#date>.
+<http://datadock.io/kal/data_dev/id/resource/dateTime/row_2> 
+  <http://datadock.io/kal/data_dev/id/definition/thing> "B"^^<http://www.w3.org/2001/XMLSchema#string>;
+  <http://datadock.io/kal/data_dev/id/definition/isoDateTime> "2018-12-25T23:59:58+09"^^<http://www.w3.org/2001/XMLSchema#dateTime>;
+  <http://datadock.io/kal/data_dev/id/definition/usDate> "2018-12-25"^^<http://www.w3.org/2001/XMLSchema#date>;
+  <http://datadock.io/kal/data_dev/id/definition/ukDate> "2018-12-25"^^<http://www.w3.org/2001/XMLSchema#date>.

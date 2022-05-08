@@ -54,6 +54,7 @@ namespace DataDock.CsvWeb.Tests
             new object[] {"escaping.metadata.json", "escaping.csv", "escaping.out.ttl"},
             new object[] {"valid-table-9.json", "countries.csv", "valid-table-9-out.ttl" },
             new object[] {"virtual-column-with-default-1.json", "countries.csv", "virtual-column-with-default-1-out.ttl"},
+            new object[] {"dateTime.json", "dateTime.csv", "dateTime.ttl"}
         };
 
         [Theory]
@@ -89,7 +90,7 @@ namespace DataDock.CsvWeb.Tests
 
             var diff = new GraphDiff();
             var diffReport = diff.Difference(expectGraph, outputGraph);
-            diffReport.AreEqual.Should().BeTrue();
+            diffReport.AreEqual.Should().BeTrue("Graphs differ");
         }
     }
 }
