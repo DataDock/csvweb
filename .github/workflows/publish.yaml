@@ -31,8 +31,28 @@ jobs:
         echo "NuGetPreReleaseTagV2: ${{ steps.gitversion.outputs.NuGetPreReleaseTagV2 }}"
         echo "NuGetPreReleaseTag: ${{ steps.gitversion.outputs.NuGetPreReleaseTag }}"
         
-    - name: Build solution
-      run: dotnet pack -o nugets --configuration=Release -p:Version=${{ steps.gitversion.outputs.NuGetVersionV2 }}
+    - name: Test
+      run: dotnet test -c Release --filter "Category!=explicit" src/DataDock.CsvWeb.Tests 
+
+    - name: Pack
+      run: dotnet pack -o nugets --configuration=Release -p:Version=${{ steps.gitversion.outputs.NuGetVersionV2 }} src/DataDock.CsvWeb.sln
       
+    - name: Upload NuGet Packages
+      uses: actions/upload-artifact@v3
+      with:
+        name: nugets
+        path: nugets\*.nupkg
+        
     - name: Publish NuGet Packages
       run: nuget push nugets\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -ApiKey ${{ secrets.NUGET_API_KEY }}
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: DataDock.CsvWeb ${{ github.ref }}
+        draft: false
+        prerelease: true
