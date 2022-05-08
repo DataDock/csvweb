@@ -40,6 +40,7 @@ namespace DataDock.CsvWeb.Tests
         }
 
         [Theory]
+        [Trait("Category", "explicit")]
         [CsvwtManifest("data\\test-suite\\manifest-rdf.ttl")]
         public async void CsvwRdfTests(CsvwTestDescription test)
         {
@@ -49,6 +50,7 @@ namespace DataDock.CsvWeb.Tests
 
         /* KA: An example of how to setup and run a single test for debugging purposes */
         [Fact]
+        [Trait("Category", "explicit")]
         public async void RunSingleTest()
         {
             var manifestGraph = new Graph();
