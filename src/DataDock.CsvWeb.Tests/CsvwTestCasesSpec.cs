@@ -153,9 +153,7 @@ namespace DataDock.CsvWeb.Tests
             //var tableGroup = new TableGroup();
             //var table = new Table(tableGroup) {Url = new Uri(_baseUri, test.Action.Uri)};
             //await converter.ConvertAsync(tableGroup, new DefaultResolver());
-
-            converter.Errors.Should().BeEmpty("Expected no errors during conversion. Got:\n\t" +
-                                              string.Join("\n\t", converter.Errors));
+            converter.Errors.Should().BeEmpty("expected no errors during conversion");
             var differ = new GraphDiff();
             NormalizeLiterals(expect);
             NormalizeLiterals(actual);
