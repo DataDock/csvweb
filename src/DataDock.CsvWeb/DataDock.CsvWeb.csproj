@@ -1,16 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
-    <GenerateAssemblyDescriptionAttribute>false</GenerateAssemblyDescriptionAttribute>
-    <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
-    <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
-    <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
-    <GenerateAssemblyCopyrightAttribute>false</GenerateAssemblyCopyrightAttribute>
-    <GenerateAssemblyVersionAttribute>false</GenerateAssemblyVersionAttribute>
-    <GenerateAssemblyFileVersionAttribute>false</GenerateAssemblyFileVersionAttribute>
-    <GenerateAssemblyInformationalVersionAttribute>false</GenerateAssemblyInformationalVersionAttribute>
+	  <AssemblyTitle>DataDock CSVWeb</AssemblyTitle>
+	  <Product>DataDock</Product>
+	  <Company>The DataDock Project</Company>
+	  <Copyright>Copyright © The DataDock Project 2018-2022</Copyright>
+	  <Description>A library for converting CSV to RDF following the CSV On The Web recommendation</Description>
+	  <PackageId>DataDock.CsvWeb</PackageId>
+	  <Version>0.0.0</Version>
+	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
+	  <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+	  <PackageTags>CSV, RDF, CSVWeb</PackageTags>
+	  <PackageProjectUrl>https://github.com/DataDock/csvweb</PackageProjectUrl>
+	  <TargetFramework>netstandard2.0</TargetFramework>
+	  <Authors>kal_ahmed, DataDock</Authors>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,6 +29,10 @@
     <PackageReference Include="dotNetRDF" Version="2.3.0" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="NodaTime" Version="3.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,58 @@
+name: Publish packages
+on:
+  push:
+    tags:
+    - 'v*'
+    
+jobs:
+  deploy:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    
+    - name: Install GitVersion
+      uses: gittools/actions/gitversion/setup@v0.9.10
+      with:
+        versionSpec: '5.x'
+
+    - name: GitVersion
+      id: gitversion
+      uses: gittools/actions/gitversion/execute@v0.9.10
+      with:
+        updateProjectFiles: true
+      
+    - name: Show GitVersion Value
+      run: |
+        echo "NuGetVersionV2: ${{ steps.gitversion.outputs.NuGetVersionV2 }}"
+        echo "NuGetVersion: ${{ steps.gitversion.outputs.NuGetVersion }}"
+        echo "NuGetPreReleaseTagV2: ${{ steps.gitversion.outputs.NuGetPreReleaseTagV2 }}"
+        echo "NuGetPreReleaseTag: ${{ steps.gitversion.outputs.NuGetPreReleaseTag }}"
+        
+    - name: Test
+      run: dotnet test -c Release --filter "Category!=explicit" src/DataDock.CsvWeb.Tests 
+
+    - name: Pack
+      run: dotnet pack -o nugets --configuration=Release -p:Version=${{ steps.gitversion.outputs.NuGetVersionV2 }} src/DataDock.CsvWeb.sln
+      
+    - name: Upload NuGet Packages
+      uses: actions/upload-artifact@v3
+      with:
+        name: nugets
+        path: nugets\*.nupkg
+        
+    - name: Publish NuGet Packages
+      run: nuget push nugets\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -ApiKey ${{ secrets.NUGET_API_KEY }}
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: DataDock.CsvWeb ${{ github.ref }}
+        draft: false
+        prerelease: true
