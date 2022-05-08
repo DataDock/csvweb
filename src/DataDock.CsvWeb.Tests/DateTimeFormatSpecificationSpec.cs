@@ -23,6 +23,10 @@ namespace DataDock.CsvWeb.Tests
         [InlineData("yyyy-MM-ddTHH:mm:ss.SSSXX", "2015-03-15T15:02:37.143-08", false, null)]
         [InlineData("yyyy-MM-ddTHH:mm:ss.SSSXX", "2015-03-15T15:02:37.143-0800", true, "2015-03-15T15:02:37.143-08")]
         [InlineData("yyyy-MM-ddTHH:mm:ss.SSSXX", "2015-03-15T15:02:37.143+0530", true, "2015-03-15T15:02:37.143+05:30")]
+        [InlineData("yyyy-MM-ddTHH:mm:ss.SSSZ", "2015-03-15T15:02:37.143Z", true, "2015-03-15T15:02:37.143Z")]
+        [InlineData("yyyy-MM-ddTHH:mm:ss.SSSZ", "2015-03-15T15:02:37.143-08", false, null)]
+        [InlineData("yyyy-MM-ddTHH:mm:ss.SSSZ", "2015-03-15T15:02:37.143-0800", true, "2015-03-15T15:02:37.143-08")]
+        [InlineData("yyyy-MM-ddTHH:mm:ss.SSSZ", "2015-03-15T15:02:37.143+0530", true, "2015-03-15T15:02:37.143+05:30")]
         [InlineData("yyyy-MM-ddTHH:mm:ss.SSSXXX", "2015-03-15T15:02:37.143Z", true, "2015-03-15T15:02:37.143Z")]
         [InlineData("yyyy-MM-ddTHH:mm:ss.SSSXXX", "2015-03-15T15:02:37.143-08", false, null)]
         [InlineData("yyyy-MM-ddTHH:mm:ss.SSSXXX", "2015-03-15T15:02:37.143-0800", false, null)]
@@ -45,6 +49,7 @@ namespace DataDock.CsvWeb.Tests
         [InlineData("yyyy-MM-ddTHH:mm:ss.SSSxxx", "2015-03-15T15:02:37.143+0530", false, null)]
         [InlineData("yyyy-MM-ddTHH:mm:ss.SSSxxx", "2015-03-15T15:02:37.143-08:00", true, "2015-03-15T15:02:37.143-08")]
         [InlineData("yyyy-MM-ddTHH:mm:ss.SSSxxx", "2015-03-15T15:02:37.143+05:30", true, "2015-03-15T15:02:37.143+05:30")]
+        [InlineData("yyyy-M-dTH:m:sZ", "2019-03-16T15:03:23Z", true, "2019-03-16T15:03:23Z")]
         public void TestDateTimeValidation(string formatString, string inputString, bool expectValid,
             string expectNormalized)
         {

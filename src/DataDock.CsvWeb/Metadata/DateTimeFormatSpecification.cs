@@ -12,7 +12,7 @@ namespace DataDock.CsvWeb.Metadata
         public DateTimeFormatSpecification(string format)
         {
             if (format == null) throw new ArgumentNullException(nameof(format));
-            _hasOffset = format.Contains("x") || format.Contains("X");
+            _hasOffset = TimeFormatSpecification.HasOffset(format);
             if (_hasOffset)
             {
                 _offsetPattern = OffsetDateTimePattern.CreateWithInvariantCulture(TimeFormatSpecification.GetNodaTimePattern(format));

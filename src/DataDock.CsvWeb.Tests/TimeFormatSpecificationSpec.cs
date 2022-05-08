@@ -47,7 +47,7 @@ namespace DataDock.CsvWeb.Tests
         [InlineData("HH:mm:ss.SSSxxx", "15:02:37.143+0530", false, null)]
         [InlineData("HH:mm:ss.SSSxxx", "15:02:37.143-08:00", true, "15:02:37.143-08")]
         [InlineData("HH:mm:ss.SSSxxx", "15:02:37.143+05:30", true, "15:02:37.143+05:30")]
-        public void TestDateTimeValidation(string formatString, string inputString, bool expectValid,
+        public void TestTimeValidation(string formatString, string inputString, bool expectValid,
             string expectNormalized)
         {
             var formatSpec = new TimeFormatSpecification(formatString);

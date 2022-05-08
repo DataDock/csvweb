@@ -12,7 +12,7 @@ namespace DataDock.CsvWeb.Metadata
         public TimeFormatSpecification(string format)
         {
             if (format == null) throw new ArgumentNullException(nameof(format));
-            _hasOffset = format.Contains("x") || format.Contains("X") || format.Contains("Z");
+            _hasOffset = HasOffset(format);
             if (_hasOffset)
             {
                 _offsetPattern = OffsetTimePattern.CreateWithInvariantCulture(GetNodaTimePattern(format));
@@ -33,6 +33,11 @@ namespace DataDock.CsvWeb.Metadata
                 .Replace("XXX", "o<Z+HH:mm>")
                 .Replace("XX", "o<Z+HHmm>")
                 .Replace("X", "o<I>");
+        }
+
+        internal static bool HasOffset(string unicodePattern)
+        {
+            return unicodePattern.Contains("X") || unicodePattern.Contains("x") || unicodePattern.Contains("Z");
         }
 
         public bool IsValid(string literal)
