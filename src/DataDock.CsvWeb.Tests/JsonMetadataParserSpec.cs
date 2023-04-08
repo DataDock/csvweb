@@ -53,7 +53,7 @@ namespace DataDock.CsvWeb.Tests
             var tg = new TableGroup();
             var _ = new Table(tg) { Url = new Uri("http://example.org/countries.csv") };
             var actual = ParseMetadata(Path.Combine("data","valid-table-1.json"), null);
-            actual.Should().BeEquivalentTo(tg, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
+            actual.Should().BeEquivalentTo(tg, options => options.Excluding(o => o.Path.EndsWith(".Parent")));
         }
 
         [Fact]
@@ -88,7 +88,7 @@ namespace DataDock.CsvWeb.Tests
             c.ValueUrl = new UriTemplate("http://example.org/o");
 
             var actual = ParseMetadataFromJson(json, null);
-            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
+            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.Path.EndsWith(".Parent")));
 
         }
 
@@ -124,7 +124,7 @@ namespace DataDock.CsvWeb.Tests
             c.Default = "2020-04-01";
 
             var actual = ParseMetadataFromJson(json, null);
-            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
+            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.Path.EndsWith(".Parent")));
 
         }
 
@@ -160,7 +160,7 @@ namespace DataDock.CsvWeb.Tests
             c.Default = "2020-04-01T16:30:00Z";
 
             var actual = ParseMetadataFromJson(json, null);
-            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
+            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.Path.EndsWith(".Parent")));
 
         }
 
@@ -187,7 +187,7 @@ namespace DataDock.CsvWeb.Tests
             });
 
             var actual = ParseMetadata(Path.Combine("data", "valid-table-2.json"), null);
-            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
+            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.Path.EndsWith(".Parent")));
         }
 
         [Fact]
@@ -217,7 +217,7 @@ namespace DataDock.CsvWeb.Tests
             });
 
             var actual = ParseMetadata(Path.Combine("data", "valid-table-3.json"), null);
-            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
+            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.Path.EndsWith(".Parent")));
         }
 
         [Fact]
@@ -251,7 +251,7 @@ namespace DataDock.CsvWeb.Tests
             });
 
             var actual = ParseMetadata(Path.Combine("data", "valid-table-6.json"), null);
-            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
+            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.Path.EndsWith(".Parent")));
         }
 
         [Fact]
@@ -303,7 +303,7 @@ namespace DataDock.CsvWeb.Tests
             });
 
             var actual = ParseMetadata(Path.Combine("data", "valid-table-8.json"), null);
-            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.SelectedMemberPath.EndsWith(".Parent")));
+            actual.Should().BeEquivalentTo(expected, options => options.Excluding(o => o.Path.EndsWith(".Parent")));
         }
     }
 }
